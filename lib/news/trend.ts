@@ -52,7 +52,7 @@ export async function scoreByAge(topics: Topic[], ages: AgeGroup[]): Promise<str
   if (!process.env.NAVER_CLIENT_ID || !process.env.NAVER_CLIENT_SECRET) return [];
   const codes = [...new Set(ages.flatMap((a) => AGE_CODES[a]))];
   // 여러 단어로 오면 첫 단어만 (예: "고소영 친오빠" → "고소영"). 검색량은 보통 이름·대표어에 몰린다.
-  for (const t of topics) if (t.keyword) t.keyword = t.keyword.trim().split(/s+/)[0];
+  for (const t of topics) if (t.keyword) t.keyword = t.keyword.trim().split(/\s+/)[0];
   const keywords = [...new Set(topics.map((t) => t.keyword).filter((k): k is string => !!k))];
   const batches: string[][] = [];
   for (let i = 0; i < keywords.length; i += 4) batches.push(keywords.slice(i, i + 4));
