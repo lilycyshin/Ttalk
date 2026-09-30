@@ -1,4 +1,4 @@
-// 관심사별 최근 3일 주요 기사 후보를 모은다. 서울 기준.
+// 관심사별 최근 24시간(요청 시각 기준) 주요 기사 후보를 모은다. 서울 기준.
 // NAVER_CLIENT_ID / NAVER_CLIENT_SECRET이 있으면 네이버 뉴스 검색 API, 없으면 구글 뉴스 RSS(키 없음).
 import { XMLParser } from "fast-xml-parser";
 import { INTERESTS } from "@/lib/topics";
@@ -52,7 +52,7 @@ const parser = new XMLParser({ ignoreAttributes: true, trimValues: true });
 const arr = <T>(x: T | T[] | undefined): T[] => (x === undefined ? [] : Array.isArray(x) ? x : [x]);
 
 async function googleSearch(query: string, interest: InterestId, n: number): Promise<Candidate[]> {
-  const q = encodeURIComponent(`${query} when:3d`);
+  const q = encodeURIComponent(`${query} when:1d`);
   const url = `https://news.google.com/rss/search?q=${q}&hl=ko&gl=KR&ceid=KR:ko`;
   const res = await fetch(url, {
     headers: { "User-Agent": "Mozilla/5.0 (compatible; lunchtalk/0.1)" },
@@ -61,7 +61,8 @@ async function googleSearch(query: string, interest: InterestId, n: number): Pro
   });
   if (!res.ok) throw new Error(`google ${query} ${res.status}`);
   const items = arr<any>(parser.parse(await res.text())?.rss?.channel?.item);
-  return items.slice(0, n).map((it) => {
+  // when:1d는 날짜 단위라 하루를 조금 넘는 기사가 섞인다. 발행 시각으로 한 번 더 자른다.
+  return items.filter(isRecent).slice(0, n).map((it) => {
     const source = typeof it.source === "string" ? it.source : "";
     return { title: cleanTitle(String(it.title), source), source, interest, url: it.link, publishedAt: it.pubDate };
   });
@@ -69,7 +70,7 @@ async function googleSearch(query: string, interest: InterestId, n: number): Pro
 
 // 네이버 뉴스 검색 API: 네이버 클라우드 NAVER API HUB (하루 25,000회). 기사 앞부분 내용(description)도 같이 준다.
 // 키는 NCP 콘솔의 Client ID(X-NCP-APIGW-API-KEY-ID) / Client Secret(X-NCP-APIGW-API-KEY).
-// 관련도순으로 받아 최근 3일 기사만 남긴다.
+// 관련도순으로 넉넉히 받아 최근 24시간 기사만 남긴다.
 const decode = (s: string) =>
   s
     .replace(/<[^>]+>/g, "")
@@ -78,11 +79,16 @@ const decode = (s: string) =>
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
     .replace(/&amp;/g, "&");
-const RECENT_MS = 3 * 24 * 3600_000;
+const RECENT_MS = 24 * 3600_000;
+// 발행 시각을 모르면 남긴다.
+function isRecent(it: { pubDate?: string }) {
+  const at = Date.parse(it.pubDate ?? "");
+  return Number.isNaN(at) || Date.now() - at <= RECENT_MS;
+}
 const cleanKey = (v?: string) => (v ?? "").trim().replace(/^["']|["']$/g, "");
 
 async function naverSearch(query: string, interest: InterestId, n: number): Promise<Candidate[]> {
-  const url = `https://naverapihub.apigw.ntruss.com/search/v1/news?query=${encodeURIComponent(query)}&display=30&sort=sim`;
+  const url = `https://naverapihub.apigw.ntruss.com/search/v1/news?query=${encodeURIComponent(query)}&display=100&sort=sim`;
   const res = await fetch(url, {
     headers: {
       // 복사할 때 딸려 온 공백·따옴표는 떼고 보낸다.
@@ -95,7 +101,7 @@ async function naverSearch(query: string, interest: InterestId, n: number): Prom
   if (!res.ok) throw new Error(`naver ${query} ${res.status} ${(await res.text()).slice(0, 120)}`);
   const items: any[] = (await res.json()).items ?? [];
   return items
-    .filter((it) => Date.now() - Date.parse(it.pubDate) <= RECENT_MS)
+    .filter(isRecent)
     .slice(0, n)
     .map((it) => {
       const url: string = it.originallink || it.link;

@@ -5,6 +5,7 @@ import { collect, type InterestId } from "./sources";
 import { generateForInterest } from "./generate";
 import { fallbackTopics, isSmallTalkSafe } from "./fallback";
 import { scoreByAge } from "./trend";
+import { fetchTrends, markHot, type Trend } from "./realtime";
 
 // news: 어디서 가져왔는지와 실패한 검색 이유(최대 3개). 네이버 연결 확인용.
 export type LiveDaily = Daily & {
@@ -12,6 +13,7 @@ export type LiveDaily = Daily & {
   mode: "gemini" | "template";
   news: { source: "naver" | "google"; errors: string[] };
   trendErrors: string[]; // 데이터랩 실패 이유 (연결 확인용)
+  realtime: { count: number; error?: string }; // 구글 트렌드 급상승 검색어 수 (연결 확인용)
 };
 
 // interests: 수집할 관심사. 앱은 사용자가 고른 것만 넘겨서 수집·생성 비용을 줄인다.
@@ -20,7 +22,15 @@ export async function buildToday(
   ages: AgeGroup[] = [],
 ): Promise<LiveDaily> {
   const date = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Seoul" });
-  const { cands, errors, source } = await collect(interests);
+  // 뉴스와 급상승 검색어를 같이 받는다. 급상승 검색어가 실패해도 뉴스만으로 진행.
+  const [{ cands, errors, source }, trendsRes] = await Promise.all([
+    collect(interests),
+    fetchTrends().then(
+      (t) => ({ trends: t, error: undefined }),
+      (e) => ({ trends: [] as Trend[], error: String(e?.message ?? e) }),
+    ),
+  ]);
+  const { trends } = trendsRes;
   if (cands.length === 0) throw new Error(`no news collected: ${errors.slice(0, 3).join(" | ")}`);
 
   const client = process.env.GEMINI_API_KEY ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY }) : null;
@@ -32,7 +42,7 @@ export async function buildToday(
       if (mine.length === 0) return [];
       if (!client) return fallbackTopics(mine, count);
       try {
-        return await generateForInterest(client, id, mine, date, count, ages);
+        return await generateForInterest(client, id, mine, date, count, ages, trends);
       } catch (e) {
         // 한 관심사가 실패해도 나머지는 살린다. 이 관심사만 틀 멘트로.
         console.warn("generate failed:", id, e);
@@ -42,8 +52,9 @@ export async function buildToday(
   );
 
   // 근거 기사 제목으로 원문 링크를 붙인다 (최대 2개).
+  const pool = [...cands, ...trends.flatMap((t) => t.news.filter((n) => n.url))];
   const linkOf = (title: string) => {
-    const c = cands.find((c) => c.title === title || c.title.startsWith(title.slice(0, 15)));
+    const c = pool.find((c) => c.title === title || c.title.startsWith(title.slice(0, 15)));
     return c?.url ? { title: c.title, url: c.url, source: c.source } : null;
   };
   for (const t of perInterest.flat())
@@ -61,6 +72,7 @@ export async function buildToday(
   // 같이 먹는 사람 연령대가 요즘 각 주제를 얼마나 검색하는지 붙인다 (정렬에 씀).
   const topics = [...byKey.values()];
   const trendErrors = ages.length ? await scoreByAge(topics, ages) : [];
+  markHot(topics, trends);
 
   return {
     date,
@@ -69,5 +81,6 @@ export async function buildToday(
     mode: client ? "gemini" : "template",
     news: { source, errors: errors.slice(0, 3) },
     trendErrors,
+    realtime: { count: trends.length, ...(trendsRes.error ? { error: trendsRes.error } : {}) },
   };
 }

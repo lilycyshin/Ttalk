@@ -41,6 +41,7 @@ export type Topic = {
   links?: Link[]; // 원문 기사
   keyword?: string; // 네이버 검색용 핵심 검색어
   trend?: number; // 같이 먹는 사람 연령대의 최근 7일 검색 관심도 (기준 키워드 대비 배수)
+  hot?: number; // 최근 24시간 구글 트렌드 급상승 검색량 (겹치는 검색어가 있을 때만)
 };
 export type Link = { title: string; url: string; source: string };
 export type Daily = { date?: string; topics: Topic[] };
@@ -67,8 +68,9 @@ export const MIN_PICKS = 3;
 export function pickForUser(daily: Daily, p: Profile): Pick[] {
   const speakTo = p.targetAges[p.targetAges.length - 1];
   const score = (t: Topic) => t.interests.filter((i) => p.interests.includes(i)).length;
-  // 관심사가 많이 겹칠수록, 같은 수면 그 연령대가 요즘 많이 검색하는 주제일수록 위로.
-  const byScore = (a: Topic, b: Topic) => score(b) - score(a) || (b.trend ?? 0) - (a.trend ?? 0);
+  // 관심사가 많이 겹칠수록, 같은 수면 지금 급상승 검색어인 주제, 그다음 그 연령대가 요즘 많이 검색하는 주제일수록 위로.
+  const byScore = (a: Topic, b: Topic) =>
+    score(b) - score(a) || (b.hot ?? 0) - (a.hot ?? 0) || (b.trend ?? 0) - (a.trend ?? 0);
   const mine = daily.topics.filter((t) => t.interests.some((i) => p.interests.includes(i)));
   const fitsAll = (t: Topic) => p.targetAges.every((a) => t.age_fit.includes(a));
   let chosen = mine.filter(fitsAll);
