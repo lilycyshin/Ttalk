@@ -11,15 +11,16 @@ export default function Home({ profile, onEdit }: { profile: Profile; onEdit: ()
   // 카드별로 펼친 패널: "다음 멘트" / "추가 정보"
   const [open, setOpen] = useState<Record<string, Panel | undefined>>({});
 
-  // 앱을 열 때마다 내 관심사 뉴스를 실시간으로 받고(/api/today), 실패하면 저장된 샘플로 대신한다.
+  // 앱을 열 때마다 내 관심사·상대 연령대에 맞는 뉴스를 실시간으로 받는다(/api/today). 실패하면 다시 시도 버튼.
+  const [attempt, setAttempt] = useState(0);
   useEffect(() => {
-    const get = (url: string) =>
-      fetch(url, { cache: "no-store" }).then((r) => (r.ok ? (r.json() as Promise<Daily>) : Promise.reject()));
-    get(`/api/today?i=${profile.interests.join(",")}`)
-      .catch(() => get("/data/today.json"))
+    setError(false);
+    setDaily(null);
+    fetch(`/api/today?i=${profile.interests.join(",")}&a=${profile.targetAges.join(",")}`, { cache: "no-store" })
+      .then((r) => (r.ok ? (r.json() as Promise<Daily>) : Promise.reject()))
       .then(setDaily)
       .catch(() => setError(true));
-  }, [profile.interests]);
+  }, [profile.interests, profile.targetAges, attempt]);
 
   const date = daily?.date ?? new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Seoul" });
   const picks = useMemo(() => (daily ? pickForUser(daily, profile) : []), [daily, profile]);
@@ -39,7 +40,14 @@ export default function Home({ profile, onEdit }: { profile: Profile; onEdit: ()
         <p className="sub">{profile.targetAges.map((a) => AGE_LABEL[a]).join("·")}랑 식사</p>
       </section>
 
-      {error && <p className="empty">토픽을 못 불러왔어요. 좀 이따 다시 열어주세요.</p>}
+      {error && (
+        <div className="empty">
+          <p>뉴스를 못 가져왔어요.</p>
+          <button className="btn" onClick={() => setAttempt((n) => n + 1)}>
+            다시 시도
+          </button>
+        </div>
+      )}
       {!daily && !error && <p className="empty">실시간 뉴스 가져오는 중…</p>}
       {daily && picks.length === 0 && (
         <div className="empty">

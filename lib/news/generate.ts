@@ -1,7 +1,7 @@
 // 관심사별 후보 기사 → 스몰토크 토픽(연령대별 멘트 포함). 관심사마다 작은 호출을 병렬로 보내 빨리 끝낸다.
 import { GoogleGenAI } from "@google/genai";
 import { z } from "zod";
-import { AGE_GROUPS, INTERESTS, type Topic } from "@/lib/topics";
+import { AGE_GROUPS, AGE_LABEL, INTERESTS, type AgeGroup, type Topic } from "@/lib/topics";
 import type { Candidate, InterestId } from "./sources";
 
 const INTEREST_IDS = INTERESTS.map((i) => i.id) as [InterestId, ...InterestId[]];
@@ -48,13 +48,17 @@ const SYSTEM = `너는 내향적인 직장인이 점심시간에 회사 사람�
 - 의견을 강요하거나 논쟁을 부르는 질문은 하지 않는다 (예: "집값 떨어져야죠?" 금지).
 - 후보 제목과 내용에 없는 사실(점수, 수치, 이름)을 지어내지 않는다.`;
 
-function buildPrompt(interest: InterestId, cands: Candidate[], date: string, count: number) {
+function buildPrompt(interest: InterestId, cands: Candidate[], date: string, count: number, ages: AgeGroup[]) {
   const label = INTERESTS.find((i) => i.id === interest)!.label;
   const lines = cands.map((c, i) => {
     const head = `${i + 1}. ${c.title}${c.source ? ` (${c.source})` : ""}`;
     return c.description ? `${head}\n   내용: ${c.description}` : head;
   });
-  return `오늘은 ${date}. 관심사 "${label}"(${interest}) 뉴스 후보다. 여기서 스몰토크 토픽을 최대 ${count}개 골라라.\n\n${lines.join("\n")}`;
+  // 같이 먹는 사람 연령대가 관심 가질 만한 기사를 우선 고르게 한다.
+  const who = ages.length
+    ? `\n오늘 같이 점심 먹는 사람: ${ages.map((a) => AGE_LABEL[a]).join(", ")}. 이 연령대가 실제로 관심 갖고 반응할 만한 기사를 우선 골라라.`
+    : "";
+  return `오늘은 ${date}. 관심사 "${label}"(${interest}) 뉴스 후보다. 여기서 스몰토크 토픽을 최대 ${count}개 골라라.${who}\n\n${lines.join("\n")}`;
 }
 
 // 모델은 GEMINI_MODEL 환경변수로 바꿀 수 있다.
@@ -68,10 +72,11 @@ export async function generateForInterest(
   cands: Candidate[],
   date: string,
   count = 5,
+  ages: AgeGroup[] = [],
 ): Promise<Topic[]> {
   const res = await ai.models.generateContent({
     model: MODEL,
-    contents: buildPrompt(interest, cands, date, count),
+    contents: buildPrompt(interest, cands, date, count, ages),
     config: {
       systemInstruction: SYSTEM,
       responseMimeType: "application/json",

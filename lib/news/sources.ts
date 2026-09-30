@@ -89,7 +89,7 @@ async function naverSearch(query: string, interest: InterestId, n: number): Prom
     signal: AbortSignal.timeout(10_000),
     cache: "no-store",
   });
-  if (!res.ok) throw new Error(`naver ${query} ${res.status}`);
+  if (!res.ok) throw new Error(`naver ${query} ${res.status} ${(await res.text()).slice(0, 120)}`);
   const items: any[] = (await res.json()).items ?? [];
   return items
     .filter((it) => Date.now() - Date.parse(it.pubDate) <= RECENT_MS)
@@ -113,19 +113,31 @@ async function naverSearch(query: string, interest: InterestId, n: number): Prom
 
 const useNaver = () => !!(process.env.NAVER_CLIENT_ID && process.env.NAVER_CLIENT_SECRET);
 
-// 고른 관심사의 검색어를 전부 병렬로 돌린다. 네이버 키가 있으면 네이버, 없으면 구글 뉴스. 실패한 검색은 건너뛴다.
+type Search = (query: string, interest: InterestId, n: number) => Promise<Candidate[]>;
+
+// 고른 관심사의 검색어를 전부 병렬로 돌린다. 실패한 검색은 건너뛰고 이유를 errors에 모은다.
 // 다른 지역 기사는 빼고, 앞 20자가 같은 제목은 한 번만. 관심사당 최대 perInterest개.
-export async function collect(interests: InterestId[], perInterest = 12): Promise<Candidate[]> {
-  const search = useNaver() ? naverSearch : googleSearch;
+async function run(search: Search, interests: InterestId[], perInterest: number) {
   const jobs = interests.flatMap((id) => QUERIES[id].map((q) => ({ id, q })));
   const results = await Promise.allSettled(jobs.map(({ id, q }) => search(q, id, perInterest)));
-  results.forEach((r, i) => r.status === "rejected" && console.warn("news failed:", jobs[i].q, r.reason));
+  const errors = results.flatMap((r) => (r.status === "rejected" ? [String(r.reason?.message ?? r.reason)] : []));
+  errors.forEach((e) => console.warn("news failed:", e));
 
   const seen = new Set<string>();
   const count: Partial<Record<InterestId, number>> = {};
-  return results
+  const cands = results
     .flatMap((r) => (r.status === "fulfilled" ? r.value : []))
     .filter(isSeoulOrNational)
     .filter((c) => c.title && !seen.has(c.title.slice(0, 20)) && seen.add(c.title.slice(0, 20)))
     .filter((c) => (count[c.interest] = (count[c.interest] ?? 0) + 1) <= perInterest);
+  return { cands, errors };
+}
+
+// 네이버 키가 있으면 네이버 먼저, 하나도 못 가져오면 구글 뉴스로 대신한다.
+export async function collect(interests: InterestId[], perInterest = 12) {
+  if (!useNaver()) return run(googleSearch, interests, perInterest);
+  const naver = await run(naverSearch, interests, perInterest);
+  if (naver.cands.length > 0) return naver;
+  const google = await run(googleSearch, interests, perInterest);
+  return { cands: google.cands, errors: [...naver.errors, ...google.errors] };
 }
