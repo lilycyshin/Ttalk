@@ -9,7 +9,7 @@ npm run build
 ```
 
 - `app/page.tsx` 프로필 없으면 온보딩, 있으면 홈
-- `components/Onboarding.tsx` 3단계: 내 나이 → 상대 나이 → 관심사
+- `components/Onboarding.tsx` 3단계: 내 연령대 → 같이 먹는 사람 연령대(여러 개) → 관심사. 여러 연령대면 홈에서 탭으로 멘트 전환
 - `components/Home.tsx` 칭호/진행바, 캐릭터 말풍선, 토픽 카드(복사, 다음 한마디, 써먹었어요)
 - `components/Mascot.tsx` 캐릭터 (`public/character.png`)
 - `lib/topics.ts` 관심사·연령대 목록과 개인화 필터. `pipeline/src/generate.ts`와 값이 같아야 함

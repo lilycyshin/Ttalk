@@ -7,8 +7,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "내향인을 위한 오늘의 점심 스몰토크",
     start_url: "/",
     display: "standalone",
-    background_color: "#FFF6DC",
-    theme_color: "#FFE9A8",
+    background_color: "#FFFFFF",
+    theme_color: "#FFFFFF",
     lang: "ko",
     icons: [
       { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },

@@ -4,25 +4,19 @@ import Mascot from "./Mascot";
 import { AGE_GROUPS, AGE_LABEL, INTERESTS, type AgeGroup, type Profile } from "@/lib/topics";
 
 const STEPS = [
-  { title: "나는 몇 살대예요?", sub: "말투를 맞추는 데만 써요", bubble: "안녕하세요! 점심 멘트 챙겨드릴게요" },
-  { title: "주로 누구랑 점심 먹어요?", sub: "상대 나이에 맞는 멘트를 골라줘요", bubble: "부장님이랑 드세요? 동기랑 드세요?" },
-  { title: "관심 있는 걸 골라요", sub: "여러 개 골라도 돼요", bubble: "아는 얘기가 나와야 덜 떨려요" },
+  { title: "연령대가 어떻게 되세요?", sub: "말투 맞출 때만 써요", bubble: "점심시간 어색한 거, 제가 좀 도와드릴게요" },
+  { title: "오늘 어떤 분이랑 식사하세요?", sub: "여러 명이면 다 골라주세요", bubble: "팀장님이랑? 아니면 동기랑?" },
+  { title: "요즘 관심 있는 거 골라주세요", sub: "여러 개 골라도 돼요", bubble: "아는 얘기 나와야 덜 어색하잖아요" },
 ];
 
 export default function Onboarding({ initial, onDone }: { initial?: Profile | null; onDone: (p: Profile) => void }) {
   const [step, setStep] = useState(0);
   const [myAge, setMyAge] = useState<AgeGroup | null>(initial?.myAge ?? null);
-  const [targetAge, setTargetAge] = useState<AgeGroup | null>(initial?.targetAge ?? null);
+  const [targetAges, setTargetAges] = useState<AgeGroup[]>(initial?.targetAges ?? []);
   const [interests, setInterests] = useState<string[]>(initial?.interests ?? []);
   const s = STEPS[step];
 
-  const pickAge = (a: AgeGroup) => {
-    if (step === 0) setMyAge(a);
-    else setTargetAge(a);
-    setStep(step + 1);
-  };
-  const toggle = (id: string) =>
-    setInterests((xs) => (xs.includes(id) ? xs.filter((x) => x !== id) : [...xs, id]));
+  const toggleIn = <T,>(xs: T[], x: T) => (xs.includes(x) ? xs.filter((y) => y !== x) : [...xs, x]);
 
   return (
     <main className="screen">
@@ -36,38 +30,66 @@ export default function Onboarding({ initial, onDone }: { initial?: Profile | nu
       <h1 className="title">{s.title}</h1>
       <p className="sub">{s.sub}</p>
 
-      {step < 2 ? (
+      {step === 0 && (
         <div className="grid2">
-          {AGE_GROUPS.map((a) => {
-            const selected = (step === 0 ? myAge : targetAge) === a;
-            return (
-              <button key={a} className={selected ? "btn big selected" : "btn big"} onClick={() => pickAge(a)}>
+          {AGE_GROUPS.map((a) => (
+            <button
+              key={a}
+              className={myAge === a ? "btn big selected" : "btn big"}
+              onClick={() => {
+                setMyAge(a);
+                setStep(1);
+              }}
+            >
+              {AGE_LABEL[a]}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {step === 1 && (
+        <>
+          <div className="grid2">
+            {AGE_GROUPS.map((a) => (
+              <button
+                key={a}
+                className={targetAges.includes(a) ? "btn big selected" : "btn big"}
+                onClick={() => setTargetAges((xs) => toggleIn(xs, a))}
+                aria-pressed={targetAges.includes(a)}
+              >
                 {AGE_LABEL[a]}
               </button>
-            );
-          })}
-        </div>
-      ) : (
+            ))}
+          </div>
+          <div className="bottom">
+            <button className="btn primary wide" disabled={targetAges.length === 0} onClick={() => setStep(2)}>
+              {targetAges.length === 0 ? "한 분은 골라주세요" : "다음"}
+            </button>
+          </div>
+        </>
+      )}
+
+      {step === 2 && (
         <>
           <div className="chips">
             {INTERESTS.map((i) => (
               <button
                 key={i.id}
                 className={interests.includes(i.id) ? "chip on" : "chip"}
-                onClick={() => toggle(i.id)}
+                onClick={() => setInterests((xs) => toggleIn(xs, i.id))}
                 aria-pressed={interests.includes(i.id)}
               >
-                <span aria-hidden>{i.emoji}</span> {i.label}
+                {i.label}
               </button>
             ))}
           </div>
           <div className="bottom">
             <button
               className="btn primary wide"
-              disabled={interests.length === 0 || !myAge || !targetAge}
-              onClick={() => myAge && targetAge && onDone({ myAge, targetAge, interests })}
+              disabled={interests.length === 0 || !myAge || targetAges.length === 0}
+              onClick={() => myAge && onDone({ myAge, targetAges: sortAges(targetAges), interests })}
             >
-              {interests.length === 0 ? "하나 이상 골라주세요" : `시작하기 (${interests.length}개)`}
+              {interests.length === 0 ? "하나는 골라주세요" : `시작할게요 (${interests.length}개)`}
             </button>
           </div>
         </>
@@ -75,9 +97,11 @@ export default function Onboarding({ initial, onDone }: { initial?: Profile | nu
 
       {step > 0 && (
         <button className="link" onClick={() => setStep(step - 1)}>
-          ← 이전
+          이전으로
         </button>
       )}
     </main>
   );
 }
+
+const sortAges = (xs: AgeGroup[]) => AGE_GROUPS.filter((a) => xs.includes(a));
