@@ -59,9 +59,10 @@ export type Pick = {
   links: Link[];
 };
 
-// 한 화면에 보여줄 토픽 수 (관심사 전체 합쳐서). 연령대 조건 때문에 모자라면 MIN_PICKS까지는 조건을 풀어서 채운다.
-export const TOTAL_PICKS = 10;
-export const MIN_PICKS = 3;
+// 한 화면에 보여줄 토픽 수 (관심사 전체 합쳐서). 최대 TOTAL_PICKS개.
+// 연령대 조건에 맞는 게 MIN_PICKS개보다 적으면 조건을 풀어서 MIN_PICKS개까지 채운다.
+export const TOTAL_PICKS = 15;
+export const MIN_PICKS = 10;
 
 // 고른 관심사가 하나라도 겹치고, 같이 먹는 모든 연령대에 맞는 토픽을 우선 보여준다. 관심사가 많이 겹칠수록 위로.
 // 멘트는 같이 먹는 사람 중 가장 윗사람 말투로. 그 말투면 다른 분들한테도 무난하다.

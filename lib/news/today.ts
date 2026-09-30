@@ -35,14 +35,19 @@ export async function buildToday(
 
   const client = process.env.GEMINI_API_KEY ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY }) : null;
   // 화면엔 전체 TOTAL_PICKS개만 나가므로 관심사당 그 몫에 여유분 2개를 더해 만든다 (연령대 필터·검색 관심도로 골라냄).
-  const count = Math.max(MIN_PICKS, Math.ceil(TOTAL_PICKS / interests.length) + 2);
+  // 관심사 하나만 골라도 MIN_PICKS개는 나오게 한다.
+  const count = Math.max(Math.ceil(MIN_PICKS / interests.length) + 1, Math.ceil(TOTAL_PICKS / interests.length) + 2);
   const perInterest = await Promise.all(
     interests.map(async (id) => {
       const mine = cands.filter((c) => c.interest === id);
       if (mine.length === 0) return [];
       if (!client) return fallbackTopics(mine, count);
       try {
-        return await generateForInterest(client, id, mine, date, count, ages, trends);
+        const made = await generateForInterest(client, id, mine, date, count, ages, trends);
+        // 모델이 적게 골랐으면 안 쓴 기사로 틀 멘트를 만들어 개수를 채운다.
+        if (made.length >= count) return made;
+        const used = new Set(made.flatMap((t) => t.source_titles));
+        return [...made, ...fallbackTopics(mine.filter((c) => !used.has(c.title)), count - made.length)];
       } catch (e) {
         // 한 관심사가 실패해도 나머지는 살린다. 이 관심사만 틀 멘트로.
         console.warn("generate failed:", id, e);

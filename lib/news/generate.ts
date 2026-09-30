@@ -76,7 +76,7 @@ function buildPrompt(
         .map((t) => `- ${t.keyword} (${t.traffic}+): ${t.news.map((n) => n.title).join(" / ")}`)
         .join("\n")}`
     : "";
-  return `지금은 ${now}. 모든 후보는 최근 24시간 기사다. 관심사 "${label}"(${interest}) 뉴스 후보다. 여기서 스몰토크 토픽을 ${count}개 골라라. 쓸 만한 후보가 있으면 되도록 개수를 채우고, 최소 3개는 고른다.${who}\n\n${lines.join("\n")}${hot}`;
+  return `지금은 ${now}. 모든 후보는 최근 24시간 기사다. 관심사 "${label}"(${interest}) 뉴스 후보다. 여기서 스몰토크 토픽을 ${count}개 골라라. 제외 기준에 걸리지 않는 후보가 있으면 반드시 ${count}개를 채운다. 같은 사건은 합치되, 다른 사건은 작은 소식이라도 따로 토픽으로 만든다.${who}\n\n${lines.join("\n")}${hot}`;
 }
 
 // 모델은 GEMINI_MODEL 환경변수로 바꿀 수 있다.
