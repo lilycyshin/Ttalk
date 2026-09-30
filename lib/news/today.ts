@@ -5,7 +5,12 @@ import { collect, type InterestId } from "./sources";
 import { generateForInterest } from "./generate";
 import { fallbackTopics, isSmallTalkSafe } from "./fallback";
 
-export type LiveDaily = Daily & { generatedAt: string; mode: "gemini" | "template" };
+// news: 어디서 가져왔는지와 실패한 검색 이유(최대 3개). 네이버 연결 확인용.
+export type LiveDaily = Daily & {
+  generatedAt: string;
+  mode: "gemini" | "template";
+  news: { source: "naver" | "google"; errors: string[] };
+};
 
 // interests: 수집할 관심사. 앱은 사용자가 고른 것만 넘겨서 수집·생성 비용을 줄인다.
 export async function buildToday(
@@ -13,7 +18,7 @@ export async function buildToday(
   ages: AgeGroup[] = [],
 ): Promise<LiveDaily> {
   const date = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Seoul" });
-  const { cands, errors } = await collect(interests);
+  const { cands, errors, source } = await collect(interests);
   if (cands.length === 0) throw new Error(`no news collected: ${errors.slice(0, 3).join(" | ")}`);
 
   const client = process.env.GEMINI_API_KEY ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY }) : null;
@@ -51,5 +56,11 @@ export async function buildToday(
     else byKey.set(key, t);
   }
 
-  return { date, topics: [...byKey.values()], generatedAt: new Date().toISOString(), mode: client ? "gemini" : "template" };
+  return {
+    date,
+    topics: [...byKey.values()],
+    generatedAt: new Date().toISOString(),
+    mode: client ? "gemini" : "template",
+    news: { source, errors: errors.slice(0, 3) },
+  };
 }

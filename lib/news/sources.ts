@@ -135,9 +135,9 @@ async function run(search: Search, interests: InterestId[], perInterest: number)
 
 // 네이버 키가 있으면 네이버 먼저, 하나도 못 가져오면 구글 뉴스로 대신한다.
 export async function collect(interests: InterestId[], perInterest = 15) {
-  if (!useNaver()) return run(googleSearch, interests, perInterest);
+  if (!useNaver()) return { ...(await run(googleSearch, interests, perInterest)), source: "google" as const };
   const naver = await run(naverSearch, interests, perInterest);
-  if (naver.cands.length > 0) return naver;
+  if (naver.cands.length > 0) return { ...naver, source: "naver" as const };
   const google = await run(googleSearch, interests, perInterest);
-  return { cands: google.cands, errors: [...naver.errors, ...google.errors] };
+  return { cands: google.cands, errors: [...naver.errors, ...google.errors], source: "google" as const };
 }
