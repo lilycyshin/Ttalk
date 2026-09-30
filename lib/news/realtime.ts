@@ -1,5 +1,6 @@
 // 구글 트렌드 실시간 급상승 검색어(한국). 키 없이 RSS로 받고, 최근 24시간에 뜬 것만 쓴다.
 // 검색어마다 대략 검색량(approx_traffic)과 관련 기사 1~3개가 붙어 온다. 한 시간 안쪽으로 갱신된다.
+// 고른 키워드와 무관한 게 섞이지 않도록 토픽 소재로는 쓰지 않고 정렬에만 쓴다 (markHot).
 import { XMLParser } from "fast-xml-parser";
 import type { Topic } from "@/lib/topics";
 

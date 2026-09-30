@@ -43,7 +43,7 @@ export async function buildToday(
       if (mine.length === 0) return [];
       if (!client) return fallbackTopics(mine, count);
       try {
-        const made = await generateForInterest(client, id, mine, date, count, ages, trends);
+        const made = await generateForInterest(client, id, mine, date, count, ages);
         // 모델이 적게 골랐으면 안 쓴 기사로 틀 멘트를 만들어 개수를 채운다.
         if (made.length >= count) return made;
         const used = new Set(made.flatMap((t) => t.source_titles));
@@ -57,9 +57,8 @@ export async function buildToday(
   );
 
   // 근거 기사 제목으로 원문 링크를 붙인다 (최대 2개).
-  const pool = [...cands, ...trends.flatMap((t) => t.news.filter((n) => n.url))];
   const linkOf = (title: string) => {
-    const c = pool.find((c) => c.title === title || c.title.startsWith(title.slice(0, 15)));
+    const c = cands.find((c) => c.title === title || c.title.startsWith(title.slice(0, 15)));
     return c?.url ? { title: c.title, url: c.url, source: c.source } : null;
   };
   for (const t of perInterest.flat())
@@ -77,6 +76,7 @@ export async function buildToday(
   // 같이 먹는 사람 연령대가 요즘 각 주제를 얼마나 검색하는지 붙인다 (정렬에 씀).
   const topics = [...byKey.values()];
   const trendErrors = ages.length ? await scoreByAge(topics, ages) : [];
+  // 급상승 검색어는 토픽 소재로 쓰지 않고, 키워드 기사로 만든 토픽 중 겹치는 걸 위로 올리는 데만 쓴다.
   markHot(topics, trends);
 
   return {
