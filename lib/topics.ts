@@ -57,7 +57,7 @@ export type Pick = {
 };
 
 // 한 화면에 보여줄 토픽 수 (관심사 전체 합쳐서). 연령대 조건 때문에 모자라면 MIN_PICKS까지는 조건을 풀어서 채운다.
-export const TOTAL_PICKS = 5;
+export const TOTAL_PICKS = 10;
 export const MIN_PICKS = 3;
 
 // 고른 관심사가 하나라도 겹치고, 같이 먹는 모든 연령대에 맞는 토픽을 우선 보여준다. 관심사가 많이 겹칠수록 위로.
@@ -82,7 +82,7 @@ export function pickForUser(daily: Daily, p: Profile): Pick[] {
   return roundRobin(picks).slice(0, TOTAL_PICKS);
 }
 
-// 관심사(태그)별로 번갈아 뽑아서 한 관심사가 5개를 다 차지하지 않게 한다.
+// 관심사(태그)별로 번갈아 뽑아서 한 관심사가 다 차지하지 않게 한다.
 function roundRobin(picks: Pick[]): Pick[] {
   const groups = new Map<string, Pick[]>();
   for (const p of picks) groups.set(p.tag, [...(groups.get(p.tag) ?? []), p]);

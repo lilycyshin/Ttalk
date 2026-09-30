@@ -17,7 +17,7 @@ export async function buildToday(
   if (cands.length === 0) throw new Error(`no news collected: ${errors.slice(0, 3).join(" | ")}`);
 
   const client = process.env.GEMINI_API_KEY ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY }) : null;
-  // 화면엔 전체 5개만 나가므로 관심사당 그 몫만큼만 만든다. 연령대 필터로 빠질 걸 대비해 하나 더.
+  // 화면엔 전체 TOTAL_PICKS개만 나가므로 관심사당 그 몫만큼만 만든다. 연령대 필터로 빠질 걸 대비해 하나 더.
   const count = Math.max(MIN_PICKS, Math.ceil(TOTAL_PICKS / interests.length) + 1);
   const perInterest = await Promise.all(
     interests.map(async (id) => {
