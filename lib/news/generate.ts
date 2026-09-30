@@ -23,7 +23,7 @@ const TopicSchema = z.object({
   age_fit: z.array(z.enum(AGE_GROUPS)).describe("이 주제에 반응이 좋을 상대 연령대"),
   keyword: z
     .string()
-    .describe("이 토픽을 네이버에서 검색할 때 쓸 핵심 검색어 하나. 사람들이 실제로 검색할 만한 2~10자 명사 (예: 문근영, 가을야구, 코스피, 아이폰18)"),
+    .describe("사람들이 네이버에 실제로 검색하는 단어 하나. 띄어쓰기 없는 2~8자 명사로, 인물·작품·브랜드 이름이나 대표 키워드 (예: 제니, 문근영, 가을야구, 코스피, 아이폰18). 문장이나 여러 단어 조합은 쓰지 않는다"),
   source_titles: z.array(z.string()).describe("근거가 된 후보 제목. 후보 목록의 제목을 글자 그대로 옮긴다"),
   openers: z.object({ "20s": Opener, "30s": Opener, "40s": Opener, "50s_plus": Opener }),
 });

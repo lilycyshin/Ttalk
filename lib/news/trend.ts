@@ -4,7 +4,8 @@
 import type { AgeGroup, Topic } from "@/lib/topics";
 
 const URL = "https://naverapihub.apigw.ntruss.com/search-trend/v1/search";
-const ANCHOR = "날씨";
+// 기준 키워드는 검색량이 너무 크면 다른 점수가 0 근처로 뭉개지므로 중간 정도인 걸 쓴다.
+const ANCHOR = "점심메뉴";
 const DAYS = 7;
 
 // 데이터랩 연령 코드: 3=19~24, 4=25~29, 5=30~34, 6=35~39, 7=40~44, 8=45~49, 9=50~54, 10=55~59, 11=60+
@@ -50,6 +51,8 @@ async function query(keywords: string[], ages: string[]): Promise<Map<string, nu
 export async function scoreByAge(topics: Topic[], ages: AgeGroup[]): Promise<string[]> {
   if (!process.env.NAVER_CLIENT_ID || !process.env.NAVER_CLIENT_SECRET) return [];
   const codes = [...new Set(ages.flatMap((a) => AGE_CODES[a]))];
+  // 여러 단어로 오면 첫 단어만 (예: "고소영 친오빠" → "고소영"). 검색량은 보통 이름·대표어에 몰린다.
+  for (const t of topics) if (t.keyword) t.keyword = t.keyword.trim().split(/s+/)[0];
   const keywords = [...new Set(topics.map((t) => t.keyword).filter((k): k is string => !!k))];
   const batches: string[][] = [];
   for (let i = 0; i < keywords.length; i += 4) batches.push(keywords.slice(i, i + 4));
@@ -61,6 +64,6 @@ export async function scoreByAge(topics: Topic[], ages: AgeGroup[]): Promise<str
     if (r.status === "fulfilled") r.value.forEach((v, k) => score.set(k, v));
     else errors.push(String(r.reason?.message ?? r.reason));
   }
-  for (const t of topics) if (t.keyword && score.has(t.keyword)) t.trend = Math.round(score.get(t.keyword)! * 100) / 100;
+  for (const t of topics) if (t.keyword && score.has(t.keyword)) t.trend = Math.round(score.get(t.keyword)! * 1000) / 1000;
   return errors;
 }
