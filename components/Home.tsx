@@ -91,7 +91,7 @@ export default function Home({ profile, onEdit }: { profile: Profile; onEdit: ()
 
 // 캐릭터 말풍선: 오늘 챙겨온 토픽 개수에 따라 바뀐다.
 function cheer(count: number | null) {
-  if (count === null) return "오늘 얘깃거리 챙기는 중…";
+  if (count === null) return "오늘 할 말 쥐어짜는 중…";
   if (count === 0) return "오늘은 딱 맞는 게 없네요";
   return `오늘 얘깃거리 ${count}개 챙겨왔어요`;
 }

@@ -1,4 +1,4 @@
-// 관심사별로 구글 뉴스 RSS 검색을 돌려 최근 24시간 주요 기사 후보를 모은다. 서울 기준. 키 없이 동작.
+// 관심사별로 구글 뉴스 RSS 검색을 돌려 최근 3일 주요 기사 후보를 모은다. 서울 기준. 키 없이 동작.
 import { XMLParser } from "fast-xml-parser";
 import { INTERESTS } from "@/lib/topics";
 
@@ -50,7 +50,7 @@ const parser = new XMLParser({ ignoreAttributes: true, trimValues: true });
 const arr = <T>(x: T | T[] | undefined): T[] => (x === undefined ? [] : Array.isArray(x) ? x : [x]);
 
 async function googleSearch(query: string, interest: InterestId, n: number): Promise<Candidate[]> {
-  const q = encodeURIComponent(`${query} when:1d`);
+  const q = encodeURIComponent(`${query} when:3d`);
   const url = `https://news.google.com/rss/search?q=${q}&hl=ko&gl=KR&ceid=KR:ko`;
   const res = await fetch(url, {
     headers: { "User-Agent": "Mozilla/5.0 (compatible; lunchtalk/0.1)" },
@@ -67,7 +67,7 @@ async function googleSearch(query: string, interest: InterestId, n: number): Pro
 
 // 고른 관심사의 검색어를 전부 병렬로 돌린다. 실패한 검색은 건너뛴다.
 // 다른 지역 기사는 빼고, 앞 20자가 같은 제목은 한 번만. 관심사당 최대 perInterest개.
-export async function collect(interests: InterestId[], perInterest = 8): Promise<Candidate[]> {
+export async function collect(interests: InterestId[], perInterest = 12): Promise<Candidate[]> {
   const jobs = interests.flatMap((id) => QUERIES[id].map((q) => ({ id, q })));
   const results = await Promise.allSettled(jobs.map(({ id, q }) => googleSearch(q, id, perInterest)));
   results.forEach((r, i) => r.status === "rejected" && console.warn("news failed:", jobs[i].q, r.reason));

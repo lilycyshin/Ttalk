@@ -34,3 +34,10 @@ export function loadProfile(): { profile: Profile; fresh: boolean } | null {
 }
 export const saveProfile = (p: Profile) => write(PROFILE_KEY, { ...p, savedOn: today() });
 
+// 다시하기: 저장한 선택을 전부 지운다.
+export function clearProfile() {
+  try {
+    localStorage.removeItem(PROFILE_KEY);
+  } catch {}
+}
+

@@ -59,7 +59,7 @@ export async function generateForInterest(
   interest: InterestId,
   cands: Candidate[],
   date: string,
-  count = 3,
+  count = 5,
 ): Promise<Topic[]> {
   const res = await ai.models.generateContent({
     model: MODEL,

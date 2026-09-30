@@ -19,7 +19,7 @@ function topicPhrase(title: string) {
   return head.length > 25 ? `${head.slice(0, 25).trim()}…` : head;
 }
 
-export function fallbackTopics(interestCands: Candidate[], count = 3): Topic[] {
+export function fallbackTopics(interestCands: Candidate[], count = 5): Topic[] {
   return interestCands
     .filter(isSmallTalkSafe)
     .slice(0, count)

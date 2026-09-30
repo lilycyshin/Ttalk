@@ -45,12 +45,15 @@ export type Profile = { myAge: AgeGroup; targetAges: AgeGroup[]; interests: stri
 
 export type Pick = { headline: string; summary: string; opener: string; follow_up: string; tag: string };
 
+// 한 화면에 보여줄 토픽 수 (관심사 전체 합쳐서).
+export const TOTAL_PICKS = 5;
+
 // 고른 관심사가 하나라도 겹치고, 같이 먹는 모든 연령대에 맞는 토픽만 보여준다. 관심사가 많이 겹칠수록 위로.
 // 멘트는 같이 먹는 사람 중 가장 윗사람 말투로. 그 말투면 다른 분들한테도 무난하다.
 export function pickForUser(daily: Daily, p: Profile): Pick[] {
   const speakTo = p.targetAges[p.targetAges.length - 1];
   const score = (t: Topic) => t.interests.filter((i) => p.interests.includes(i)).length;
-  return daily.topics
+  const picks = daily.topics
     .filter((t) => t.interests.some((i) => p.interests.includes(i)))
     .filter((t) => p.targetAges.every((a) => t.age_fit.includes(a)))
     .sort((a, b) => score(b) - score(a))
@@ -60,6 +63,17 @@ export function pickForUser(daily: Daily, p: Profile): Pick[] {
       ...t.openers[speakTo],
       tag: topicTag(t, p.interests),
     }));
+  return roundRobin(picks).slice(0, TOTAL_PICKS);
+}
+
+// 관심사(태그)별로 번갈아 뽑아서 한 관심사가 5개를 다 차지하지 않게 한다.
+function roundRobin(picks: Pick[]): Pick[] {
+  const groups = new Map<string, Pick[]>();
+  for (const p of picks) groups.set(p.tag, [...(groups.get(p.tag) ?? []), p]);
+  const out: Pick[] = [];
+  for (let i = 0; out.length < picks.length; i++)
+    for (const g of groups.values()) if (g[i]) out.push(g[i]);
+  return out;
 }
 
 // 카드 태그: 토픽과 겹치는 내 관심사 중 가장 구체적인(마지막) 것.
