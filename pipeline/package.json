@@ -1,0 +1,20 @@
+{
+  "name": "smalltalk-pipeline-prototype",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "daily": "tsx src/run.ts",
+    "daily:fixture": "tsx src/run.ts --fixture",
+    "prompt": "tsx src/run.ts --prompt"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "latest",
+    "fast-xml-parser": "^5.0.0",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.6.0"
+  }
+}
