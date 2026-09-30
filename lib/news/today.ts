@@ -1,20 +1,21 @@
-// 오늘의 토픽 풀을 실시간으로 만든다: 관심사별 뉴스 수집 → (키 있으면) Claude로 멘트 생성, 없으면 틀 멘트.
-import Anthropic from "@anthropic-ai/sdk";
+// 오늘의 토픽 풀을 실시간으로 만든다: 관심사별 뉴스 수집 → (키 있으면) Gemini로 멘트 생성, 없으면 틀 멘트.
+import { GoogleGenAI } from "@google/genai";
 import { INTERESTS, type Daily, type Topic } from "@/lib/topics";
-import { collect } from "./sources";
+import { collect, type InterestId } from "./sources";
 import { generateForInterest } from "./generate";
 import { fallbackTopics, isSmallTalkSafe } from "./fallback";
 
-export type LiveDaily = Daily & { generatedAt: string; mode: "claude" | "template" };
+export type LiveDaily = Daily & { generatedAt: string; mode: "gemini" | "template" };
 
-export async function buildToday(): Promise<LiveDaily> {
+// interests: 수집할 관심사. 앱은 사용자가 고른 것만 넘겨서 수집·생성 비용을 줄인다.
+export async function buildToday(interests: InterestId[] = INTERESTS.map((i) => i.id)): Promise<LiveDaily> {
   const date = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Seoul" });
-  const cands = await collect();
+  const cands = await collect(interests);
   if (cands.length === 0) throw new Error("no news collected");
 
-  const client = process.env.ANTHROPIC_API_KEY ? new Anthropic() : null;
+  const client = process.env.GEMINI_API_KEY ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY }) : null;
   const perInterest = await Promise.all(
-    INTERESTS.map(async ({ id }) => {
+    interests.map(async (id) => {
       const mine = cands.filter((c) => c.interest === id);
       if (mine.length === 0) return [];
       if (!client) return fallbackTopics(mine);
@@ -37,5 +38,5 @@ export async function buildToday(): Promise<LiveDaily> {
     else byKey.set(key, t);
   }
 
-  return { date, topics: [...byKey.values()], generatedAt: new Date().toISOString(), mode: client ? "claude" : "template" };
+  return { date, topics: [...byKey.values()], generatedAt: new Date().toISOString(), mode: client ? "gemini" : "template" };
 }

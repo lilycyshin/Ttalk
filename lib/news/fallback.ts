@@ -1,4 +1,4 @@
-// API 키가 없거나 생성이 실패했을 때: 기사 제목으로 멘트를 틀에 맞춰 만든다. 말투는 LLM보다 단조롭다.
+// Gemini API 키가 없거나 생성이 실패했을 때: 기사 제목으로 멘트를 틀에 맞춰 만든다. 말투는 LLM보다 단조롭다.
 import { AGE_GROUPS, INTERESTS, type Topic } from "@/lib/topics";
 import type { Candidate } from "./sources";
 
@@ -19,7 +19,7 @@ function topicPhrase(title: string) {
   return head.length > 25 ? `${head.slice(0, 25).trim()}…` : head;
 }
 
-export function fallbackTopics(interestCands: Candidate[], count = 2): Topic[] {
+export function fallbackTopics(interestCands: Candidate[], count = 3): Topic[] {
   return interestCands
     .filter(isSmallTalkSafe)
     .slice(0, count)

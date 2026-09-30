@@ -11,15 +11,15 @@ export default function Home({ profile, onEdit }: { profile: Profile; onEdit: ()
   // 카드별로 펼친 패널: "다음 멘트" / "추가 정보"
   const [open, setOpen] = useState<Record<string, Panel | undefined>>({});
 
-  // 실시간 뉴스(/api/today)를 먼저 받고, 실패하면 저장된 샘플로 대신한다.
+  // 앱을 열 때마다 내 관심사 뉴스를 실시간으로 받고(/api/today), 실패하면 저장된 샘플로 대신한다.
   useEffect(() => {
     const get = (url: string) =>
       fetch(url, { cache: "no-store" }).then((r) => (r.ok ? (r.json() as Promise<Daily>) : Promise.reject()));
-    get("/api/today")
+    get(`/api/today?i=${profile.interests.join(",")}`)
       .catch(() => get("/data/today.json"))
       .then(setDaily)
       .catch(() => setError(true));
-  }, []);
+  }, [profile.interests]);
 
   const date = daily?.date ?? new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Seoul" });
   const picks = useMemo(() => (daily ? pickForUser(daily, profile) : []), [daily, profile]);
@@ -40,7 +40,7 @@ export default function Home({ profile, onEdit }: { profile: Profile; onEdit: ()
       </section>
 
       {error && <p className="empty">토픽을 못 불러왔어요. 좀 이따 다시 열어주세요.</p>}
-      {!daily && !error && <p className="empty">오늘 얘깃거리 고르는 중…</p>}
+      {!daily && !error && <p className="empty">실시간 뉴스 가져오는 중…</p>}
       {daily && picks.length === 0 && (
         <div className="empty">
           <p>{profile.targetAges.length > 1 ? "오늘은 고른 관심사로 다 같이 얘기할 만한 뉴스가 없어요." : "오늘은 고른 관심사에 맞는 뉴스가 없어요."}</p>

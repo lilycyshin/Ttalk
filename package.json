@@ -7,7 +7,7 @@
     "start": "next start"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.129.0",
+    "@google/genai": "^2.24.0",
     "fast-xml-parser": "^5.11.2",
     "next": "^15.5.0",
     "react": "^19.1.0",

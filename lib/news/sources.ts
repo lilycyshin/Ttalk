@@ -66,10 +66,10 @@ async function searchNews(interest: InterestId, perInterest: number): Promise<Ca
   });
 }
 
-// 모든 관심사를 병렬로 검색. 실패한 관심사는 건너뛴다. 앞 20자가 같은 제목은 한 번만.
-export async function collect(perInterest = 6): Promise<Candidate[]> {
-  const results = await Promise.allSettled(INTERESTS.map((i) => searchNews(i.id, perInterest)));
-  results.forEach((r, i) => r.status === "rejected" && console.warn("news failed:", INTERESTS[i].id, r.reason));
+// 고른 관심사를 병렬로 검색. 실패한 관심사는 건너뛴다. 앞 20자가 같은 제목은 한 번만.
+export async function collect(interests: InterestId[], perInterest = 8): Promise<Candidate[]> {
+  const results = await Promise.allSettled(interests.map((id) => searchNews(id, perInterest)));
+  results.forEach((r, i) => r.status === "rejected" && console.warn("news failed:", interests[i], r.reason));
   const seen = new Set<string>();
   return results
     .flatMap((r) => (r.status === "fulfilled" ? r.value : []))

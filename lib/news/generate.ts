@@ -1,7 +1,6 @@
 // 관심사별 후보 기사 → 스몰토크 토픽(연령대별 멘트 포함). 관심사마다 작은 호출을 병렬로 보내 빨리 끝낸다.
-import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenAI } from "@google/genai";
 import { z } from "zod";
-import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { AGE_GROUPS, INTERESTS, type Topic } from "@/lib/topics";
 import type { Candidate, InterestId } from "./sources";
 
@@ -13,7 +12,7 @@ const Opener = z.object({
 });
 
 const TopicSchema = z.object({
-  headline: z.string().describe("카드 제목, 20자 이내"),
+  headline: z.string().describe("카드 제목. 짧은 주제 이름, 15자 이내"),
   summary: z.string().describe("대화 전에 알아둘 사실 1~2문장. 후보 제목에 없는 사실은 쓰지 않는다"),
   interests: z.array(z.enum(INTEREST_IDS)).describe("해당 관심사 1~3개. 요청받은 관심사를 반드시 포함"),
   age_fit: z.array(z.enum(AGE_GROUPS)).describe("이 주제에 반응이 좋을 상대 연령대"),
@@ -35,6 +34,10 @@ const SYSTEM = `너는 내향적인 직장인이 점심시간에 회사 사람�
 - 딱딱한 문어체·번역투 금지: "~하십니까", "~입니다", "~것 같습니다" 같은 말투는 50s_plus 상대여도 쓰지 않는다. 이모지·ㅋㅋ·과한 신조어도 쓰지 않는다.
 - 상대 연령대에 맞춘다. 20s는 또래에게 쓰는 가벼운 말투, 30s·40s는 편한 윗사람에게, 50s_plus는 한참 윗사람에게 예의 있지만 부드러운 해요체.
 - 호칭(부장님, 팀장님, 선배님, 과장님 등)은 쓰지 않는다. 바로 본론으로 시작한다.
+- 기사 제목을 그대로 읽거나 따옴표로 인용하지 않는다. 기사 내용을 친구한테 말하듯 풀어서 말한다.
+  예) 제목 "문근영, 결혼 후 첫 예능 나들이…'남편 자랑'" → "문근영 결혼했다는 기사 보셨어요?"
+  예) 제목 "코스피, 美금리 부담에 사흘째 하락" → "요즘 코스피 사흘 연속 떨어졌대요, 주식 하세요?"
+- headline은 기사 제목을 줄인 게 아니라 "문근영 결혼", "코스피 사흘째 하락"처럼 짧은 주제 이름으로 쓴다.
 - "오늘 아시안게임 보셨어요?"처럼 상대가 한 마디로 답할 수 있는 질문으로 시작한다.
 - 의견을 강요하거나 논쟁을 부르는 질문은 하지 않는다 (예: "집값 떨어져야죠?" 금지).
 - 후보 제목에 없는 사실(점수, 수치, 이름)을 지어내지 않는다.`;
@@ -45,24 +48,32 @@ function buildPrompt(interest: InterestId, cands: Candidate[], date: string, cou
   return `오늘은 ${date}. 관심사 "${label}"(${interest}) 뉴스 후보다. 여기서 스몰토크 토픽을 최대 ${count}개 골라라.\n\n${lines.join("\n")}`;
 }
 
+// 모델은 GEMINI_MODEL 환경변수로 바꿀 수 있다.
+const MODEL = process.env.GEMINI_MODEL || "gemini-flash-latest";
+// Gemini에 넘길 JSON 스키마. $schema 메타 키는 빼고 보낸다.
+const { $schema: _meta, ...RESULT_JSON_SCHEMA } = z.toJSONSchema(ResultSchema);
+
 export async function generateForInterest(
-  client: Anthropic,
+  ai: GoogleGenAI,
   interest: InterestId,
   cands: Candidate[],
   date: string,
-  count = 2,
+  count = 3,
 ): Promise<Topic[]> {
-  const res = await client.messages.parse({
-    model: "claude-opus-5-5",
-    max_tokens: 16000,
-    output_config: { effort: "low", format: zodOutputFormat(ResultSchema) },
-    system: SYSTEM,
-    messages: [{ role: "user", content: buildPrompt(interest, cands, date, count) }],
+  const res = await ai.models.generateContent({
+    model: MODEL,
+    contents: buildPrompt(interest, cands, date, count),
+    config: {
+      systemInstruction: SYSTEM,
+      responseMimeType: "application/json",
+      responseJsonSchema: RESULT_JSON_SCHEMA,
+    },
   });
-  if (res.stop_reason === "refusal") throw new Error(`${interest}: refused`);
-  if (!res.parsed_output) throw new Error(`${interest}: parse failed (stop_reason=${res.stop_reason})`);
+  if (!res.text) throw new Error(`${interest}: empty response (${res.candidates?.[0]?.finishReason ?? "unknown"})`);
+  const parsed = ResultSchema.safeParse(JSON.parse(res.text));
+  if (!parsed.success) throw new Error(`${interest}: schema mismatch`);
   // 요청한 관심사 태그가 빠졌으면 붙인다. 앱은 태그로 필터링하므로 빠지면 안 보인다.
-  return res.parsed_output.topics.map((t) => ({
+  return parsed.data.topics.map((t) => ({
     ...t,
     interests: t.interests.includes(interest) ? t.interests : [interest, ...t.interests],
   }));
