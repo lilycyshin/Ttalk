@@ -1,4 +1,4 @@
-# 점심토크 (프론트엔드)
+# 내향인 생존하기 (프론트엔드)
 
 Next.js 15 App Router, 설치 가능한 웹앱(PWA). DB·로그인 없음, 프로필은 브라우저 localStorage.
 

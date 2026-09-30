@@ -3,9 +3,9 @@ import RegisterSW from "@/components/RegisterSW";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "점심토크",
+  title: "내향인 생존하기",
   description: "내향인을 위한 오늘의 점심 스몰토크",
-  appleWebApp: { capable: true, title: "점심토크", statusBarStyle: "default" },
+  appleWebApp: { capable: true, title: "내향인 생존하기", statusBarStyle: "default" },
   icons: { icon: "/icons/icon-192.png", apple: "/icons/apple-touch-icon.png" },
 };
 

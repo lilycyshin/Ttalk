@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "점심토크 - 오늘의 스몰토크",
-    short_name: "점심토크",
+    name: "내향인 생존하기 - 오늘의 점심 스몰토크",
+    short_name: "내향인 생존하기",
     description: "내향인을 위한 오늘의 점심 스몰토크",
     start_url: "/",
     display: "standalone",

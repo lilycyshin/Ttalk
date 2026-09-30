@@ -26,6 +26,7 @@ const SYSTEM = `너는 내향적인 직장인이 점심시간에 회사 사람�
 고르는 기준:
 - 누구나 부담 없이 반응할 수 있는 주제만 고른다.
 - 제외: 정치 갈등, 사건·사고·범죄·사망, 재난 피해, 종교, 성별·세대 갈등, 특정인 사생활 폭로, 광고성 기사. 후보가 전부 이런 거면 토픽을 0개로 돌려준다.
+- 서울에서 일하는 직장인 기준이다. 서울이 아닌 다른 지역 소식은 뺀다. 전국 공통 화제는 괜찮다.
 - 같은 사건은 하나로 합친다.
 - interests 태그는 토픽 내용과 실제로 관련 있는 것만 단다.
 
@@ -49,7 +50,7 @@ function buildPrompt(interest: InterestId, cands: Candidate[], date: string, cou
 }
 
 // 모델은 GEMINI_MODEL 환경변수로 바꿀 수 있다.
-const MODEL = process.env.GEMINI_MODEL || "gemini-flash-latest";
+const MODEL = process.env.GEMINI_MODEL || "gemini-flash-lite-latest";
 // Gemini에 넘길 JSON 스키마. $schema 메타 키는 빼고 보낸다.
 const { $schema: _meta, ...RESULT_JSON_SCHEMA } = z.toJSONSchema(ResultSchema);
 

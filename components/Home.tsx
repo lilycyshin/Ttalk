@@ -28,8 +28,8 @@ export default function Home({ profile, onEdit }: { profile: Profile; onEdit: ()
   return (
     <main className="screen home">
       <header className="status">
-        <span className="brand">점심토크</span>
-        <button className="btn small" onClick={onEdit}>설정</button>
+        <span className="brand">내향인 생존하기</span>
+        <button className="btn small" onClick={onEdit}>다시하기</button>
       </header>
 
       <section className="hero">
