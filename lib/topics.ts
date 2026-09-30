@@ -37,31 +37,47 @@ export type Topic = {
   age_fit: AgeGroup[];
   source_titles: string[];
   openers: Record<AgeGroup, Opener>;
+  background?: string; // 잘 모르는 사람을 위한 배경 설명
+  links?: Link[]; // 원문 기사
 };
+export type Link = { title: string; url: string; source: string };
 export type Daily = { date?: string; topics: Topic[] };
 
 // targetAges: 오늘 같이 먹는 사람들의 연령대(여러 개). 오름차순.
 export type Profile = { myAge: AgeGroup; targetAges: AgeGroup[]; interests: string[] };
 
-export type Pick = { headline: string; summary: string; opener: string; follow_up: string; tag: string };
+export type Pick = {
+  headline: string;
+  summary: string;
+  opener: string;
+  follow_up: string;
+  tag: string;
+  background?: string;
+  links: Link[];
+};
 
-// 한 화면에 보여줄 토픽 수 (관심사 전체 합쳐서).
+// 한 화면에 보여줄 토픽 수 (관심사 전체 합쳐서). 연령대 조건 때문에 모자라면 MIN_PICKS까지는 조건을 풀어서 채운다.
 export const TOTAL_PICKS = 5;
+export const MIN_PICKS = 3;
 
-// 고른 관심사가 하나라도 겹치고, 같이 먹는 모든 연령대에 맞는 토픽만 보여준다. 관심사가 많이 겹칠수록 위로.
+// 고른 관심사가 하나라도 겹치고, 같이 먹는 모든 연령대에 맞는 토픽을 우선 보여준다. 관심사가 많이 겹칠수록 위로.
 // 멘트는 같이 먹는 사람 중 가장 윗사람 말투로. 그 말투면 다른 분들한테도 무난하다.
 export function pickForUser(daily: Daily, p: Profile): Pick[] {
   const speakTo = p.targetAges[p.targetAges.length - 1];
   const score = (t: Topic) => t.interests.filter((i) => p.interests.includes(i)).length;
-  const picks = daily.topics
-    .filter((t) => t.interests.some((i) => p.interests.includes(i)))
-    .filter((t) => p.targetAges.every((a) => t.age_fit.includes(a)))
+  const mine = daily.topics.filter((t) => t.interests.some((i) => p.interests.includes(i)));
+  const fitsAll = (t: Topic) => p.targetAges.every((a) => t.age_fit.includes(a));
+  let chosen = mine.filter(fitsAll);
+  if (chosen.length < MIN_PICKS) chosen = [...chosen, ...mine.filter((t) => !fitsAll(t)).slice(0, MIN_PICKS - chosen.length)];
+  const picks = chosen
     .sort((a, b) => score(b) - score(a))
     .map((t) => ({
       headline: t.headline,
       summary: t.summary,
       ...t.openers[speakTo],
       tag: topicTag(t, p.interests),
+      background: t.background,
+      links: t.links ?? [],
     }));
   return roundRobin(picks).slice(0, TOTAL_PICKS);
 }

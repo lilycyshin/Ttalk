@@ -13,10 +13,15 @@ const Opener = z.object({
 
 const TopicSchema = z.object({
   headline: z.string().describe("카드 제목. 짧은 주제 이름, 15자 이내"),
-  summary: z.string().describe("대화 전에 알아둘 사실 1~2문장. 후보 제목에 없는 사실은 쓰지 않는다"),
+  summary: z
+    .string()
+    .describe("무슨 일인지 2~3문장으로 구체적으로(누가, 무엇을, 수치). 같은 사건의 후보 제목 여러 개를 종합한다. 후보 제목·내용에 없는 사실은 쓰지 않는다"),
+  background: z
+    .string()
+    .describe("이 주제를 잘 모르는 사람을 위한 배경 설명 2문장. 일반 상식 수준만 쓰고, 오늘 기사에 대한 새 사실(수치, 날짜, 발언)은 지어내지 않는다"),
   interests: z.array(z.enum(INTEREST_IDS)).describe("해당 관심사 1~3개. 요청받은 관심사를 반드시 포함"),
   age_fit: z.array(z.enum(AGE_GROUPS)).describe("이 주제에 반응이 좋을 상대 연령대"),
-  source_titles: z.array(z.string()).describe("근거가 된 후보 제목"),
+  source_titles: z.array(z.string()).describe("근거가 된 후보 제목. 후보 목록의 제목을 글자 그대로 옮긴다"),
   openers: z.object({ "20s": Opener, "30s": Opener, "40s": Opener, "50s_plus": Opener }),
 });
 const ResultSchema = z.object({ topics: z.array(TopicSchema) });
@@ -41,11 +46,14 @@ const SYSTEM = `너는 내향적인 직장인이 점심시간에 회사 사람�
 - headline은 기사 제목을 줄인 게 아니라 "문근영 결혼", "코스피 사흘째 하락"처럼 짧은 주제 이름으로 쓴다.
 - "오늘 아시안게임 보셨어요?"처럼 상대가 한 마디로 답할 수 있는 질문으로 시작한다.
 - 의견을 강요하거나 논쟁을 부르는 질문은 하지 않는다 (예: "집값 떨어져야죠?" 금지).
-- 후보 제목에 없는 사실(점수, 수치, 이름)을 지어내지 않는다.`;
+- 후보 제목과 내용에 없는 사실(점수, 수치, 이름)을 지어내지 않는다.`;
 
 function buildPrompt(interest: InterestId, cands: Candidate[], date: string, count: number) {
   const label = INTERESTS.find((i) => i.id === interest)!.label;
-  const lines = cands.map((c, i) => `${i + 1}. ${c.title}${c.source ? ` (${c.source})` : ""}`);
+  const lines = cands.map((c, i) => {
+    const head = `${i + 1}. ${c.title}${c.source ? ` (${c.source})` : ""}`;
+    return c.description ? `${head}\n   내용: ${c.description}` : head;
+  });
   return `오늘은 ${date}. 관심사 "${label}"(${interest}) 뉴스 후보다. 여기서 스몰토크 토픽을 최대 ${count}개 골라라.\n\n${lines.join("\n")}`;
 }
 

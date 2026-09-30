@@ -61,7 +61,26 @@ export default function Home({ profile, onEdit }: { profile: Profile; onEdit: ()
 
               {panel && (
                 <div className="more">
-                  {panel === "next" ? <p>{p.follow_up}</p> : <p className="summary">{p.summary}</p>}
+                  {panel === "next" ? (
+                    <p>{p.follow_up}</p>
+                  ) : (
+                    <>
+                      <p className="summary">{p.summary}</p>
+                      {p.background && <p className="background">{p.background}</p>}
+                      {p.links.length > 0 && (
+                        <ul className="links">
+                          {p.links.map((l) => (
+                            <li key={l.url}>
+                              <a href={l.url} target="_blank" rel="noopener noreferrer">
+                                {l.title}
+                              </a>
+                              {l.source && <span> · {l.source}</span>}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </>
+                  )}
                 </div>
               )}
 

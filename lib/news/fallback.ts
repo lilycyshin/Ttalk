@@ -29,7 +29,7 @@ export function fallbackTopics(interestCands: Candidate[], count = 5): Topic[] {
       const soft = { opener: `${short} 기사 보셨어요?`, follow_up: `요즘 ${label} 쪽 관심 있으세요?` };
       return {
         headline: c.title.length > 24 ? `${c.title.slice(0, 23)}…` : c.title,
-        summary: c.source ? `${c.title} (${c.source})` : c.title,
+        summary: c.description || "자세한 내용은 아래 원문 기사에서 볼 수 있어요.",
         interests: [c.interest],
         age_fit: [...AGE_GROUPS],
         source_titles: [c.title],

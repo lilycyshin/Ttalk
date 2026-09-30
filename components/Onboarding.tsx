@@ -1,12 +1,16 @@
 "use client";
 import { useState } from "react";
 import Mascot from "./Mascot";
+import Typewriter from "./Typewriter";
 import { AGE_GROUPS, AGE_LABEL, INTERESTS, type AgeGroup, type Profile } from "@/lib/topics";
+
+// 관심사는 최대 이만큼만 고를 수 있다.
+const MAX_INTERESTS = 3;
 
 const STEPS = [
   { title: "연령대가 어떻게 되세요?", sub: "말투 맞출 때만 써요", bubble: "오늘 점심시간엔 또 뭔 얘기를 해볼까요?" },
   { title: "오늘 어떤 분이랑 식사하세요?", sub: "여러 명이면 다 골라주세요", bubble: "같이 먹는 사람 나이에 맞춰 말투 바꿔드려요" },
-  { title: "요즘 관심 있는 거 골라주세요", sub: "여러 개 골라도 돼요", bubble: "아는 얘기 나와야 덜 어색하잖아요" },
+  { title: "요즘 관심 있는 거 골라주세요", sub: "최대 3개까지 골라주세요", bubble: "아는 얘기 나와야 덜 어색하잖아요" },
 ];
 
 export default function Onboarding({
@@ -21,7 +25,7 @@ export default function Onboarding({
   const [step, setStep] = useState(startStep);
   const [myAge, setMyAge] = useState<AgeGroup | null>(initial?.myAge ?? null);
   const [targetAges, setTargetAges] = useState<AgeGroup[]>(initial?.targetAges ?? []);
-  const [interests, setInterests] = useState<string[]>(initial?.interests ?? []);
+  const [interests, setInterests] = useState<string[]>((initial?.interests ?? []).slice(0, MAX_INTERESTS));
   // 2단계에서 방금 고른 상대 연령대에 대한 캐릭터 반응. 없으면 단계 기본 말풍선.
   const [reaction, setReaction] = useState<string | null>(null);
   const s = STEPS[step];
@@ -30,6 +34,13 @@ export default function Onboarding({
   const goTo = (n: number) => {
     setReaction(null);
     setStep(n);
+  };
+  const toggleInterest = (id: string) =>
+    setInterests((xs) => (xs.includes(id) || xs.length < MAX_INTERESTS ? toggleIn(xs, id) : xs));
+  // 1단계: 고른 버튼 색이 바뀐 걸 잠깐 보여주고 넘어간다.
+  const pickMyAge = (a: AgeGroup) => {
+    setMyAge(a);
+    setTimeout(() => goTo(1), 350);
   };
   const toggleTarget = (a: AgeGroup) => {
     const adding = !targetAges.includes(a);
@@ -46,7 +57,9 @@ export default function Onboarding({
       </div>
 
       <Mascot size={100} say={reaction ?? s.bubble} />
-      <h1 className="title">{s.title}</h1>
+      <h1 className="title">
+        <Typewriter text={s.title} />
+      </h1>
       <p className="sub">{s.sub}</p>
 
       {step === 0 && (
@@ -55,10 +68,8 @@ export default function Onboarding({
             <button
               key={a}
               className={myAge === a ? "btn big selected" : "btn big"}
-              onClick={() => {
-                setMyAge(a);
-                goTo(1);
-              }}
+              onClick={() => pickMyAge(a)}
+              aria-pressed={myAge === a}
             >
               {AGE_LABEL[a]}
             </button>
@@ -82,7 +93,7 @@ export default function Onboarding({
           </div>
           <div className="bottom">
             <button className="btn primary wide" disabled={targetAges.length === 0} onClick={() => goTo(2)}>
-              {targetAges.length === 0 ? "한 분은 골라주세요" : "다음"}
+              {targetAges.length === 0 ? "한 분 이상 골라주세요" : "다음"}
             </button>
           </div>
         </>
@@ -95,7 +106,8 @@ export default function Onboarding({
               <button
                 key={i.id}
                 className={interests.includes(i.id) ? "chip on" : "chip"}
-                onClick={() => setInterests((xs) => toggleIn(xs, i.id))}
+                onClick={() => toggleInterest(i.id)}
+                disabled={!interests.includes(i.id) && interests.length >= MAX_INTERESTS}
                 aria-pressed={interests.includes(i.id)}
               >
                 {i.label}
@@ -108,7 +120,7 @@ export default function Onboarding({
               disabled={interests.length === 0 || !myAge || targetAges.length === 0}
               onClick={() => myAge && onDone({ myAge, targetAges: sortAges(targetAges), interests })}
             >
-              {interests.length === 0 ? "하나는 골라주세요" : `시작할게요 (${interests.length}개)`}
+              {interests.length === 0 ? "하나는 골라주세요" : `시작할게요 (${interests.length}/${MAX_INTERESTS})`}
             </button>
           </div>
         </>

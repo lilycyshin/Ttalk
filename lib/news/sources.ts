@@ -1,4 +1,5 @@
-// 관심사별로 구글 뉴스 RSS 검색을 돌려 최근 3일 주요 기사 후보를 모은다. 서울 기준. 키 없이 동작.
+// 관심사별 최근 3일 주요 기사 후보를 모은다. 서울 기준.
+// NAVER_CLIENT_ID / NAVER_CLIENT_SECRET이 있으면 네이버 뉴스 검색 API, 없으면 구글 뉴스 RSS(키 없음).
 import { XMLParser } from "fast-xml-parser";
 import { INTERESTS } from "@/lib/topics";
 
@@ -8,6 +9,7 @@ export type Candidate = {
   title: string; // 언론사 꼬리표·말머리를 뗀 기사 제목
   source: string; // 언론사
   interest: InterestId; // 어떤 관심사 검색에서 나왔는지 (LLM 태깅의 힌트)
+  description?: string; // 기사 앞부분 내용 (네이버만)
   url?: string;
   publishedAt?: string;
 };
@@ -65,11 +67,58 @@ async function googleSearch(query: string, interest: InterestId, n: number): Pro
   });
 }
 
-// 고른 관심사의 검색어를 전부 병렬로 돌린다. 실패한 검색은 건너뛴다.
+// 네이버 뉴스 검색 API (공식, 하루 25,000회 무료). 기사 앞부분 내용(description)도 같이 준다.
+// 관련도순으로 받아 최근 3일 기사만 남긴다.
+const decode = (s: string) =>
+  s
+    .replace(/<[^>]+>/g, "")
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;|&#39;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&");
+const RECENT_MS = 3 * 24 * 3600_000;
+
+async function naverSearch(query: string, interest: InterestId, n: number): Promise<Candidate[]> {
+  const url = `https://openapi.naver.com/v1/search/news.json?query=${encodeURIComponent(query)}&display=30&sort=sim`;
+  const res = await fetch(url, {
+    headers: {
+      "X-Naver-Client-Id": process.env.NAVER_CLIENT_ID!,
+      "X-Naver-Client-Secret": process.env.NAVER_CLIENT_SECRET!,
+    },
+    signal: AbortSignal.timeout(10_000),
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`naver ${query} ${res.status}`);
+  const items: any[] = (await res.json()).items ?? [];
+  return items
+    .filter((it) => Date.now() - Date.parse(it.pubDate) <= RECENT_MS)
+    .slice(0, n)
+    .map((it) => {
+      const url: string = it.originallink || it.link;
+      let source = "";
+      try {
+        source = new URL(url).hostname.replace(/^(www|news|m)\./, "");
+      } catch {}
+      return {
+        title: cleanTitle(decode(String(it.title))),
+        source,
+        interest,
+        description: decode(String(it.description ?? "")),
+        url,
+        publishedAt: it.pubDate,
+      };
+    });
+}
+
+const useNaver = () => !!(process.env.NAVER_CLIENT_ID && process.env.NAVER_CLIENT_SECRET);
+
+// 고른 관심사의 검색어를 전부 병렬로 돌린다. 네이버 키가 있으면 네이버, 없으면 구글 뉴스. 실패한 검색은 건너뛴다.
 // 다른 지역 기사는 빼고, 앞 20자가 같은 제목은 한 번만. 관심사당 최대 perInterest개.
 export async function collect(interests: InterestId[], perInterest = 12): Promise<Candidate[]> {
+  const search = useNaver() ? naverSearch : googleSearch;
   const jobs = interests.flatMap((id) => QUERIES[id].map((q) => ({ id, q })));
-  const results = await Promise.allSettled(jobs.map(({ id, q }) => googleSearch(q, id, perInterest)));
+  const results = await Promise.allSettled(jobs.map(({ id, q }) => search(q, id, perInterest)));
   results.forEach((r, i) => r.status === "rejected" && console.warn("news failed:", jobs[i].q, r.reason));
 
   const seen = new Set<string>();

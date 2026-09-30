@@ -1,6 +1,6 @@
 // 오늘의 토픽 풀을 실시간으로 만든다: 관심사별 뉴스 수집 → (키 있으면) Gemini로 멘트 생성, 없으면 틀 멘트.
 import { GoogleGenAI } from "@google/genai";
-import { INTERESTS, TOTAL_PICKS, type Daily, type Topic } from "@/lib/topics";
+import { INTERESTS, MIN_PICKS, TOTAL_PICKS, type Daily, type Topic } from "@/lib/topics";
 import { collect, type InterestId } from "./sources";
 import { generateForInterest } from "./generate";
 import { fallbackTopics, isSmallTalkSafe } from "./fallback";
@@ -15,7 +15,7 @@ export async function buildToday(interests: InterestId[] = INTERESTS.map((i) => 
 
   const client = process.env.GEMINI_API_KEY ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY }) : null;
   // 화면엔 전체 5개만 나가므로 관심사당 그 몫만큼만 만든다. 연령대 필터로 빠질 걸 대비해 하나 더.
-  const count = Math.ceil(TOTAL_PICKS / interests.length) + 1;
+  const count = Math.max(MIN_PICKS, Math.ceil(TOTAL_PICKS / interests.length) + 1);
   const perInterest = await Promise.all(
     interests.map(async (id) => {
       const mine = cands.filter((c) => c.interest === id);
@@ -30,6 +30,14 @@ export async function buildToday(interests: InterestId[] = INTERESTS.map((i) => 
       }
     }),
   );
+
+  // 근거 기사 제목으로 원문 링크를 붙인다 (최대 2개).
+  const linkOf = (title: string) => {
+    const c = cands.find((c) => c.title === title || c.title.startsWith(title.slice(0, 15)));
+    return c?.url ? { title: c.title, url: c.url, source: c.source } : null;
+  };
+  for (const t of perInterest.flat())
+    t.links = t.source_titles.map(linkOf).filter((l): l is NonNullable<typeof l> => !!l).slice(0, 2);
 
   // 같은 기사에서 나온 토픽이 여러 관심사에 걸치면 하나로 합치고 태그를 모은다.
   const byKey = new Map<string, Topic>();

@@ -48,7 +48,9 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .btn:active:not(:disabled) { transform: scale(0.97); background: var(--soft); }
 .btn:disabled { opacity: 0.4; cursor: default; }
 .btn.big { font-size: 20px; font-weight: 700; padding: 22px 0; border-radius: 16px; }
-.btn.selected, .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+/* 고른 항목은 파란색으로 확실히 보이게 */
+.btn.selected { background: var(--point); border-color: var(--point); color: #fff; }
 .btn.primary:active:not(:disabled) { background: #333d4b; }
 .btn.wide { width: 100%; font-size: 17px; font-weight: 700; padding: 17px 0; border-radius: 14px; }
 .btn.small { padding: 7px 12px; font-size: 14px; color: var(--muted); border-radius: 10px; }
@@ -74,7 +76,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
   font-size: 15px;
   transition: background 0.15s, color 0.15s;
 }
-.chip.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.chip.on { background: var(--point); border-color: var(--point); color: #fff; }
+.chip:disabled { opacity: 0.35; cursor: default; }
 
 .bottom { width: 100%; margin-top: auto; padding-top: 28px; }
 .link { margin-top: 20px; background: none; border: 0; color: var(--muted); font-weight: 500; font-size: 14px; }
@@ -107,7 +110,11 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .opener { font-size: 19px; font-weight: 700; line-height: 1.5; margin: 0 0 14px; letter-spacing: -0.02em; }
 .more { border-top: 1px solid var(--line); padding-top: 12px; margin-bottom: 14px; font-size: 15px; line-height: 1.55; }
 .more p { margin: 0 0 6px; }
-.summary { color: var(--muted); font-size: 13px; }
+.summary { color: var(--ink); font-size: 14px; }
+.background { color: var(--muted); font-size: 13px; }
+.links { list-style: none; padding: 0; margin: 8px 0 0; font-size: 12px; color: var(--muted); }
+.links li { margin-top: 4px; }
+.links a { color: var(--point); text-decoration: none; }
 .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .actions .btn { padding: 10px 4px; font-size: 14px; }
 
@@ -132,3 +139,9 @@ button { font: inherit; color: inherit; cursor: pointer; }
 
 /* 맨 아래 개발자 표시 */
 .credit { text-align: center; color: var(--muted); font-size: 11px; padding: 0 16px 24px; opacity: 0.8; }
+
+/* 질문 타이핑 효과 커서 */
+.caret { display: inline-block; width: 2px; height: 0.9em; margin-left: 2px; background: currentColor; vertical-align: -0.08em; animation: blink 0.9s steps(1) infinite; }
+.caret.done { display: none; }
+@keyframes blink { 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .caret { display: none; } }
