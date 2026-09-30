@@ -67,7 +67,8 @@ async function googleSearch(query: string, interest: InterestId, n: number): Pro
   });
 }
 
-// 네이버 뉴스 검색 API (공식, 하루 25,000회 무료). 기사 앞부분 내용(description)도 같이 준다.
+// 네이버 뉴스 검색 API: 네이버 클라우드 NAVER API HUB (하루 25,000회). 기사 앞부분 내용(description)도 같이 준다.
+// 키는 NCP 콘솔의 Client ID(X-NCP-APIGW-API-KEY-ID) / Client Secret(X-NCP-APIGW-API-KEY).
 // 관련도순으로 받아 최근 3일 기사만 남긴다.
 const decode = (s: string) =>
   s
@@ -78,13 +79,15 @@ const decode = (s: string) =>
     .replace(/&gt;/g, ">")
     .replace(/&amp;/g, "&");
 const RECENT_MS = 3 * 24 * 3600_000;
+const cleanKey = (v?: string) => (v ?? "").trim().replace(/^["']|["']$/g, "");
 
 async function naverSearch(query: string, interest: InterestId, n: number): Promise<Candidate[]> {
-  const url = `https://openapi.naver.com/v1/search/news.json?query=${encodeURIComponent(query)}&display=30&sort=sim`;
+  const url = `https://naverapihub.apigw.ntruss.com/search/v1/news?query=${encodeURIComponent(query)}&display=30&sort=sim`;
   const res = await fetch(url, {
     headers: {
-      "X-Naver-Client-Id": process.env.NAVER_CLIENT_ID!,
-      "X-Naver-Client-Secret": process.env.NAVER_CLIENT_SECRET!,
+      // 복사할 때 딸려 온 공백·따옴표는 떼고 보낸다.
+      "X-NCP-APIGW-API-KEY-ID": cleanKey(process.env.NAVER_CLIENT_ID),
+      "X-NCP-APIGW-API-KEY": cleanKey(process.env.NAVER_CLIENT_SECRET),
     },
     signal: AbortSignal.timeout(10_000),
     cache: "no-store",

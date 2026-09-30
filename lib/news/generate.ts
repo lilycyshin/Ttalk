@@ -58,7 +58,7 @@ function buildPrompt(interest: InterestId, cands: Candidate[], date: string, cou
   const who = ages.length
     ? `\n오늘 같이 점심 먹는 사람: ${ages.map((a) => AGE_LABEL[a]).join(", ")}. 이 연령대가 실제로 관심 갖고 반응할 만한 기사를 우선 골라라.`
     : "";
-  return `오늘은 ${date}. 관심사 "${label}"(${interest}) 뉴스 후보다. 여기서 스몰토크 토픽을 최대 ${count}개 골라라.${who}\n\n${lines.join("\n")}`;
+  return `오늘은 ${date}. 관심사 "${label}"(${interest}) 뉴스 후보다. 여기서 스몰토크 토픽을 ${count}개 골라라. 쓸 만한 후보가 있으면 되도록 개수를 채우고, 최소 3개는 고른다.${who}\n\n${lines.join("\n")}`;
 }
 
 // 모델은 GEMINI_MODEL 환경변수로 바꿀 수 있다.
