@@ -9,8 +9,16 @@ const STEPS = [
   { title: "요즘 관심 있는 거 골라주세요", sub: "여러 개 골라도 돼요", bubble: "아는 얘기 나와야 덜 어색하잖아요" },
 ];
 
-export default function Onboarding({ initial, onDone }: { initial?: Profile | null; onDone: (p: Profile) => void }) {
-  const [step, setStep] = useState(0);
+export default function Onboarding({
+  initial,
+  startStep = 0,
+  onDone,
+}: {
+  initial?: Profile | null;
+  startStep?: number;
+  onDone: (p: Profile) => void;
+}) {
+  const [step, setStep] = useState(startStep);
   const [myAge, setMyAge] = useState<AgeGroup | null>(initial?.myAge ?? null);
   const [targetAges, setTargetAges] = useState<AgeGroup[]>(initial?.targetAges ?? []);
   const [interests, setInterests] = useState<string[]>(initial?.interests ?? []);

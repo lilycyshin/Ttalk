@@ -5,24 +5,31 @@ import Home from "@/components/Home";
 import { loadProfile, saveProfile } from "@/lib/storage";
 import type { Profile } from "@/lib/topics";
 
+// 처음: 연령대 → 같이 먹는 사람 → 관심사. 다음 날부터는 연령대를 건너뛰고 나머지 둘만 다시 묻는다.
+// "설정"을 누르면 연령대부터 다시 고를 수 있다.
 export default function Page() {
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [fresh, setFresh] = useState(false);
   const [editing, setEditing] = useState(false);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    setProfile(loadProfile());
+    const saved = loadProfile();
+    setProfile(saved?.profile ?? null);
+    setFresh(saved?.fresh ?? false);
     setReady(true);
   }, []);
 
   if (!ready) return null;
-  if (!profile || editing)
+  if (!profile || !fresh || editing)
     return (
       <Onboarding
         initial={profile}
+        startStep={profile && !editing ? 1 : 0}
         onDone={(p) => {
           saveProfile(p);
           setProfile(p);
+          setFresh(true);
           setEditing(false);
         }}
       />
