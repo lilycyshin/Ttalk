@@ -39,6 +39,8 @@ export type Topic = {
   openers: Record<AgeGroup, Opener>;
   background?: string; // 잘 모르는 사람을 위한 배경 설명
   links?: Link[]; // 원문 기사
+  keyword?: string; // 네이버 검색용 핵심 검색어
+  trend?: number; // 같이 먹는 사람 연령대의 최근 7일 검색 관심도 (기준 키워드 대비 배수)
 };
 export type Link = { title: string; url: string; source: string };
 export type Daily = { date?: string; topics: Topic[] };
@@ -65,12 +67,14 @@ export const MIN_PICKS = 3;
 export function pickForUser(daily: Daily, p: Profile): Pick[] {
   const speakTo = p.targetAges[p.targetAges.length - 1];
   const score = (t: Topic) => t.interests.filter((i) => p.interests.includes(i)).length;
+  // 관심사가 많이 겹칠수록, 같은 수면 그 연령대가 요즘 많이 검색하는 주제일수록 위로.
+  const byScore = (a: Topic, b: Topic) => score(b) - score(a) || (b.trend ?? 0) - (a.trend ?? 0);
   const mine = daily.topics.filter((t) => t.interests.some((i) => p.interests.includes(i)));
   const fitsAll = (t: Topic) => p.targetAges.every((a) => t.age_fit.includes(a));
   let chosen = mine.filter(fitsAll);
   if (chosen.length < MIN_PICKS) chosen = [...chosen, ...mine.filter((t) => !fitsAll(t)).slice(0, MIN_PICKS - chosen.length)];
   const picks = chosen
-    .sort((a, b) => score(b) - score(a))
+    .sort(byScore)
     .map((t) => ({
       headline: t.headline,
       summary: t.summary,

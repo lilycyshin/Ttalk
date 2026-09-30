@@ -21,6 +21,9 @@ const TopicSchema = z.object({
     .describe("이 주제를 잘 모르는 사람을 위한 배경 설명 2문장. 일반 상식 수준만 쓰고, 오늘 기사에 대한 새 사실(수치, 날짜, 발언)은 지어내지 않는다"),
   interests: z.array(z.enum(INTEREST_IDS)).describe("해당 관심사 1~3개. 요청받은 관심사를 반드시 포함"),
   age_fit: z.array(z.enum(AGE_GROUPS)).describe("이 주제에 반응이 좋을 상대 연령대"),
+  keyword: z
+    .string()
+    .describe("이 토픽을 네이버에서 검색할 때 쓸 핵심 검색어 하나. 사람들이 실제로 검색할 만한 2~10자 명사 (예: 문근영, 가을야구, 코스피, 아이폰18)"),
   source_titles: z.array(z.string()).describe("근거가 된 후보 제목. 후보 목록의 제목을 글자 그대로 옮긴다"),
   openers: z.object({ "20s": Opener, "30s": Opener, "40s": Opener, "50s_plus": Opener }),
 });

@@ -4,12 +4,14 @@ import { INTERESTS, MIN_PICKS, TOTAL_PICKS, type AgeGroup, type Daily, type Topi
 import { collect, type InterestId } from "./sources";
 import { generateForInterest } from "./generate";
 import { fallbackTopics, isSmallTalkSafe } from "./fallback";
+import { scoreByAge } from "./trend";
 
 // news: 어디서 가져왔는지와 실패한 검색 이유(최대 3개). 네이버 연결 확인용.
 export type LiveDaily = Daily & {
   generatedAt: string;
   mode: "gemini" | "template";
   news: { source: "naver" | "google"; errors: string[] };
+  trendErrors: string[]; // 데이터랩 실패 이유 (연결 확인용)
 };
 
 // interests: 수집할 관심사. 앱은 사용자가 고른 것만 넘겨서 수집·생성 비용을 줄인다.
@@ -22,8 +24,8 @@ export async function buildToday(
   if (cands.length === 0) throw new Error(`no news collected: ${errors.slice(0, 3).join(" | ")}`);
 
   const client = process.env.GEMINI_API_KEY ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY }) : null;
-  // 화면엔 전체 TOTAL_PICKS개만 나가므로 관심사당 그 몫만큼만 만든다. 연령대 필터로 빠질 걸 대비해 하나 더.
-  const count = Math.max(MIN_PICKS, Math.ceil(TOTAL_PICKS / interests.length) + 1);
+  // 화면엔 전체 TOTAL_PICKS개만 나가므로 관심사당 그 몫에 여유분 2개를 더해 만든다 (연령대 필터·검색 관심도로 골라냄).
+  const count = Math.max(MIN_PICKS, Math.ceil(TOTAL_PICKS / interests.length) + 2);
   const perInterest = await Promise.all(
     interests.map(async (id) => {
       const mine = cands.filter((c) => c.interest === id);
@@ -56,11 +58,16 @@ export async function buildToday(
     else byKey.set(key, t);
   }
 
+  // 같이 먹는 사람 연령대가 요즘 각 주제를 얼마나 검색하는지 붙인다 (정렬에 씀).
+  const topics = [...byKey.values()];
+  const trendErrors = ages.length ? await scoreByAge(topics, ages) : [];
+
   return {
     date,
-    topics: [...byKey.values()],
+    topics,
     generatedAt: new Date().toISOString(),
     mode: client ? "gemini" : "template",
     news: { source, errors: errors.slice(0, 3) },
+    trendErrors,
   };
 }
