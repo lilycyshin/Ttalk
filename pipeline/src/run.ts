@@ -12,7 +12,7 @@ const cands: Candidate[] = process.argv.includes("--fixture") || process.argv.in
 console.error(`candidates: ${cands.length}`);
 
 if (process.argv.includes("--prompt")) {
-  console.log(SYSTEM + "\n\n---\n\n" + buildPrompt(cands, date, 12));
+  console.log(SYSTEM + "\n\n---\n\n" + buildPrompt(cands, date, 16));
 } else {
   const { daily, usage } = await generateDaily(cands, date);
   mkdirSync("out", { recursive: true });

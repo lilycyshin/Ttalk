@@ -27,7 +27,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 
 .screen {
   max-width: 440px;
-  min-height: 100dvh;
+  min-height: calc(100dvh - 40px);
   margin: 0 auto;
   padding: 20px 16px 32px;
   display: flex;
@@ -85,41 +85,30 @@ button { font: inherit; color: inherit; cursor: pointer; }
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
   padding: 4px 2px 16px; border-bottom: 1px solid var(--line);
 }
-.lv { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
-.lv-badge {
-  flex: none; background: var(--soft); color: var(--ink);
-  border-radius: 8px; padding: 4px 8px; font-size: 13px; font-weight: 700;
-}
-.lv-text { flex: 1; min-width: 0; }
-.lv-text b { font-size: 15px; font-weight: 700; }
-.lv-text small { color: var(--muted); font-weight: 500; font-size: 12px; }
-.bar { height: 4px; border-radius: 2px; margin: 6px 0 4px; overflow: hidden; background: var(--line); }
-.fill { height: 100%; background: var(--point); transition: width 0.3s; }
 
 .hero { text-align: center; margin: 28px 0 12px; }
 .date { margin: 0 0 4px; font-weight: 600; font-size: 14px; color: var(--point); }
 .hero .sub { margin-bottom: 8px; }
 .empty { text-align: center; color: var(--muted); font-weight: 500; }
+.empty p { margin: 12px 0; }
+.brand { font-size: 17px; font-weight: 700; letter-spacing: -0.02em; }
 
 .cards { list-style: none; padding: 0; margin: 8px 0 0; display: flex; flex-direction: column; gap: 12px; }
 .card {
   background: var(--panel); border: 1px solid var(--line); border-radius: 18px;
   padding: 18px 16px 16px; transition: background 0.2s;
 }
-.card.done { background: var(--soft); }
 .card-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; min-width: 0; }
 .tag {
   flex: none; background: var(--soft); color: var(--muted);
   border-radius: 6px; padding: 3px 7px; font-size: 12px; font-weight: 600;
 }
-.card.done .tag { background: var(--panel); }
 .card-title { font-weight: 600; color: var(--muted); font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .opener { font-size: 19px; font-weight: 700; line-height: 1.5; margin: 0 0 14px; letter-spacing: -0.02em; }
 .more { border-top: 1px solid var(--line); padding-top: 12px; margin-bottom: 14px; font-size: 15px; line-height: 1.55; }
 .more p { margin: 0 0 6px; }
-.more b { color: var(--point); font-weight: 700; margin-right: 6px; }
 .summary { color: var(--muted); font-size: 13px; }
-.actions { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+.actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .actions .btn { padding: 10px 4px; font-size: 14px; }
 
 /* 캐릭터 */
@@ -128,7 +117,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
   display: flex; align-items: flex-end; justify-content: center;
   background: #fff; border-radius: 50%; overflow: hidden;
 }
-.mascot-img { display: block; margin-bottom: 6px; mix-blend-mode: multiply; clip-path: inset(0 0 0 4%); animation: bob 2.4s ease-in-out infinite; }
+.mascot-img { display: block; margin-bottom: 6px; mix-blend-mode: multiply; animation: bob 2.4s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) { .mascot-img { animation: none; } }
 .bubble {
   position: relative; max-width: 280px; margin-bottom: 12px;
@@ -140,10 +129,6 @@ button { font: inherit; color: inherit; cursor: pointer; }
   width: 12px; height: 12px; background: var(--soft);
 }
 
-/* 상대 연령대 탭 (여러 명과 식사할 때) */
-.tabs { display: flex; gap: 4px; background: var(--soft); border-radius: 12px; padding: 4px; margin: 8px 0 4px; }
-.tab {
-  flex: 1; background: none; border: 0; border-radius: 9px; padding: 9px 0;
-  font-size: 14px; font-weight: 600; color: var(--muted); transition: background 0.15s, color 0.15s;
-}
-.tab.on { background: var(--panel); color: var(--ink); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08); }
+
+/* 맨 아래 개발자 표시 */
+.credit { text-align: center; color: var(--muted); font-size: 11px; padding: 0 16px 24px; opacity: 0.8; }

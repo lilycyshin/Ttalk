@@ -22,6 +22,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         {children}
+        <footer className="credit">개발자: lilycyshin@gmail.com</footer>
         <RegisterSW />
       </body>
     </html>

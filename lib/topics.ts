@@ -45,14 +45,15 @@ export type Profile = { myAge: AgeGroup; targetAges: AgeGroup[]; interests: stri
 
 export type Pick = { headline: string; summary: string; opener: string; follow_up: string; tag: string };
 
-// 관심사 일치 2점, 상대 연령대(하나라도) 적합 1점. 관심사가 안 겹치는 날도 빈 화면이 되지 않게 점수순으로 채운다.
-// speakTo: 멘트 말투를 맞출 상대 연령대. 여러 명이면 홈의 탭에서 고른다.
-export function pickForUser(daily: Daily, p: Profile, speakTo: AgeGroup, n = 5): Pick[] {
-  const score = (t: Topic) =>
-    t.interests.filter((i) => p.interests.includes(i)).length * 2 + (p.targetAges.some((a) => t.age_fit.includes(a)) ? 1 : 0);
-  return [...daily.topics]
+// 고른 관심사가 하나라도 겹치고, 같이 먹는 모든 연령대에 맞는 토픽만 보여준다. 관심사가 많이 겹칠수록 위로.
+// 멘트는 같이 먹는 사람 중 가장 윗사람 말투로. 그 말투면 다른 분들한테도 무난하다.
+export function pickForUser(daily: Daily, p: Profile): Pick[] {
+  const speakTo = p.targetAges[p.targetAges.length - 1];
+  const score = (t: Topic) => t.interests.filter((i) => p.interests.includes(i)).length;
+  return daily.topics
+    .filter((t) => t.interests.some((i) => p.interests.includes(i)))
+    .filter((t) => p.targetAges.every((a) => t.age_fit.includes(a)))
     .sort((a, b) => score(b) - score(a))
-    .slice(0, n)
     .map((t) => ({
       headline: t.headline,
       summary: t.summary,
@@ -61,8 +62,8 @@ export function pickForUser(daily: Daily, p: Profile, speakTo: AgeGroup, n = 5):
     }));
 }
 
-// 카드 태그: 사용자가 고른 관심사를 우선, 없으면 토픽의 가장 구체적인(마지막) 관심사.
+// 카드 태그: 토픽과 겹치는 내 관심사 중 가장 구체적인(마지막) 것.
 function topicTag(t: Topic, mine: string[]) {
-  const id = t.interests.find((i) => mine.includes(i)) ?? t.interests[t.interests.length - 1];
+  const id = [...t.interests].reverse().find((i) => mine.includes(i));
   return INTERESTS.find((i) => i.id === id)?.label ?? "스몰토크";
 }
