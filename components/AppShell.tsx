@@ -5,7 +5,6 @@ import Trends from "./Trends";
 import KeywordNews from "./KeywordNews";
 import GaraTalk from "./GaraTalk";
 import TabIcon from "./TabIcon";
-import Credit from "./Credit";
 import type { Profile } from "@/lib/topics";
 
 const TABS = [
@@ -16,21 +15,23 @@ const TABS = [
 ] as const;
 type TabId = (typeof TABS)[number]["id"];
 
-// 상단 로고·성향 재설정 + 탭 내용 + 하단 아이콘 탭 바. 앱을 열면 항상 실검부터.
+// 상단 로고·성향 재설정 + 탭 내용 + 하단 아이콘 탭 바. 앱을 열면 실검부터 (성향 조사 직후엔 홈부터).
 // 가라톡은 전체 화면으로 덮고, 뒤로가기를 누르면 직전 탭으로 돌아간다.
 export default function AppShell({
   profile,
   fresh,
   onSave,
   onReset,
+  startTab = "trends",
 }: {
   profile: Profile;
   fresh: boolean;
   onSave: (p: Profile) => void;
   onReset: () => void;
+  startTab?: TabId;
 }) {
-  const [tab, setTab] = useState<TabId>("trends");
-  const [prev, setPrev] = useState<TabId>("trends");
+  const [tab, setTab] = useState<TabId>(startTab);
+  const [prev, setPrev] = useState<TabId>(startTab);
   const mainRef = useRef<HTMLElement>(null);
   const go = (id: TabId) => {
     if (id === "talk") setPrev(tab === "talk" ? prev : tab);
@@ -49,10 +50,9 @@ export default function AppShell({
             성향 재설정
           </button>
         </header>
-        {tab === "home" && <HomeTab profile={profile} />}
+        {tab === "home" && <HomeTab profile={profile} go={go} />}
         {tab === "trends" && <Trends />}
         {tab === "keywords" && <KeywordNews profile={profile} fresh={fresh} onSave={onSave} />}
-        <Credit />
       </main>
 
       <nav className="tabbar" aria-label="메뉴">

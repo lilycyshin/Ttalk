@@ -3,12 +3,11 @@ import { useEffect, useRef, useState } from "react";
 
 type Msg = { from: "me" | "friend"; text: string };
 
-const STORE_KEY = "smalltalk.garatalk.v2";
 // 남이 봐도 대화 중간처럼 보이게 시작한다.
 const FIRST: Msg = { from: "friend", text: "그니까 ㅋㅋㅋ대박임" };
 
 // 가라톡: 점심 자리에서 카톡하는 척할 수 있는 전체 화면 메신저. 상대 "정대호"는 Gemini가 친구처럼 답한다.
-// 뒤로가기 버튼으로만 나간다. 대화는 이 브라우저에만 남는다.
+// 뒤로가기 버튼으로만 나간다. 대화는 저장하지 않아서 나갔다 들어오면 처음부터.
 export default function GaraTalk({ onBack }: { onBack: () => void }) {
   const [msgs, setMsgs] = useState<Msg[]>([FIRST]);
   const [text, setText] = useState("");
@@ -16,16 +15,14 @@ export default function GaraTalk({ onBack }: { onBack: () => void }) {
   const endRef = useRef<HTMLDivElement>(null);
   const boxRef = useRef<HTMLDivElement>(null);
 
+  // 예전 버전이 저장해 둔 대화는 지운다.
   useEffect(() => {
     try {
-      const saved = JSON.parse(localStorage.getItem(STORE_KEY) ?? "null");
-      if (Array.isArray(saved) && saved.length) setMsgs(saved);
+      localStorage.removeItem("smalltalk.garatalk.v1");
+      localStorage.removeItem("smalltalk.garatalk.v2");
     } catch {}
   }, []);
   useEffect(() => {
-    try {
-      localStorage.setItem(STORE_KEY, JSON.stringify(msgs.slice(-60)));
-    } catch {}
     endRef.current?.scrollIntoView({ block: "end" });
   }, [msgs, typing]);
   // 전체 화면인 동안 뒤 페이지가 스크롤되지 않게

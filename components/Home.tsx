@@ -11,14 +11,28 @@ export default function Home({ profile, onEditKeywords }: { profile: Profile; on
   // "상세 보기"로 펼친 카드들
   const [open, setOpen] = useState<Record<string, boolean>>({});
 
-  // 앱을 열 때마다 내 관심사·상대 연령대에 맞는 뉴스를 실시간으로 받는다(/api/today). 실패하면 다시 시도 버튼.
+  // 내 관심사·상대 연령대에 맞는 뉴스를 실시간으로 받는다(/api/today). 실패하면 다시 시도 버튼.
+  // 만드는 데 오래 걸려서, 같은 조건으로 30분 안에 다시 열면 이 탭에서 받아 둔 걸 바로 보여준다 (탭을 닫으면 사라짐).
   const [attempt, setAttempt] = useState(0);
   useEffect(() => {
+    const query = `i=${profile.interests.join(",")}&a=${profile.targetAges.join(",")}`;
+    const cacheKey = `smalltalk.today.${query}`;
     setError(false);
+    if (attempt === 0) {
+      try {
+        const hit = JSON.parse(sessionStorage.getItem(cacheKey) ?? "null");
+        if (hit && Date.now() - hit.at < 30 * 60_000) return setDaily(hit.daily);
+      } catch {}
+    }
     setDaily(null);
-    fetch(`/api/today?i=${profile.interests.join(",")}&a=${profile.targetAges.join(",")}`, { cache: "no-store" })
+    fetch(`/api/today?${query}`, { cache: "no-store" })
       .then((r) => (r.ok ? (r.json() as Promise<Daily>) : Promise.reject()))
-      .then(setDaily)
+      .then((d) => {
+        setDaily(d);
+        try {
+          sessionStorage.setItem(cacheKey, JSON.stringify({ at: Date.now(), daily: d }));
+        } catch {}
+      })
       .catch(() => setError(true));
   }, [profile.interests, profile.targetAges, attempt]);
 

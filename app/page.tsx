@@ -12,6 +12,7 @@ export default function Page() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [fresh, setFresh] = useState(false);
   const [ready, setReady] = useState(false);
+  const [justSetUp, setJustSetUp] = useState(false); // 성향 조사를 막 마쳤으면 홈부터
 
   useEffect(() => {
     const saved = loadProfile();
@@ -28,9 +29,19 @@ export default function Page() {
 
   if (!ready) return null;
   if (!profile || profile.introversion === undefined || !profile.teamMood)
-    return <Onboarding initial={profile} steps={[5, 7, 0, 3, 4, 6]} onDone={save} />;
+    return (
+      <Onboarding
+        initial={profile}
+        steps={[5, 7, 0, 3, 4, 6]}
+        onDone={(p) => {
+          setJustSetUp(true);
+          save(p);
+        }}
+      />
+    );
   return (
     <AppShell
+      startTab={justSetUp ? "home" : "trends"}
       profile={profile}
       fresh={fresh}
       onSave={save}

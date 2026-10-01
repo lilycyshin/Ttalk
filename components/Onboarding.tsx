@@ -2,9 +2,8 @@
 import { useState } from "react";
 import Mascot from "./Mascot";
 import Typewriter from "./Typewriter";
-import Credit from "./Credit";
 import { AGE_GROUPS, AGE_LABEL, INTERESTS, type AgeGroup, type Profile } from "@/lib/topics";
-import { INTROVERT_LEVELS, sceneImage, TEAM_MOODS, TEAM_MOOD_LABEL, TEAM_MOOD_SYMPATHY, introvertLevel, type TeamMood } from "@/lib/persona";
+import { INTROVERT_LEVELS, TEAM_MOODS, TEAM_MOOD_LABEL, TEAM_MOOD_SYMPATHY, introvertLevel, type TeamMood } from "@/lib/persona";
 
 // 관심사는 최대 이만큼만 고를 수 있다.
 const MAX_INTERESTS = 3;
@@ -40,7 +39,8 @@ export default function Onboarding({
   const [interests, setInterests] = useState<string[]>((initial?.interests ?? []).slice(0, MAX_INTERESTS));
   const [introversion, setIntroversion] = useState<number | undefined>(initial?.introversion);
   const [teamMood, setTeamMood] = useState<TeamMood | null>(initial?.teamMood ?? null);
-  const [nickname, setNickname] = useState(initial?.nickname ?? "");
+  // 이름 칸엔 아무 의미 없는 랜덤 이름을 미리 넣어 둔다 (그대로 써도 되고 바꿔도 된다).
+  const [nickname, setNickname] = useState(() => initial?.nickname ?? randomName());
   // 같이 먹는 사람을 고를 때 캐릭터 반응. 없으면 단계 기본 말풍선.
   const [reaction, setReaction] = useState<string | null>(null);
   const step = steps[pos];
@@ -49,12 +49,7 @@ export default function Onboarding({
   const s = STEPS[step];
   const level = introvertLevel(introversion ?? 2);
   const title = step === 6 ? TEAM_MOOD_SYMPATHY[teamMood ?? "normal"] : s.title;
-  // 키워드 고르는 화면: 오늘 같이 먹는 사람에 맞춘 그림 (윗사람이 끼어 있으면 진땀 빼는 그림, 또래·후배뿐이면 편하게 먹는 그림).
-  const hasSenior = !!myAge && targetAges.some((a) => AGE_GROUPS.indexOf(a) > AGE_GROUPS.indexOf(myAge));
-  const mascotSrc =
-    step === 2 && targetAges.length > 0 && introversion !== undefined
-      ? sceneImage(introversion, hasSenior ? "senior" : "peer")
-      : level.image;
+  const mascotSrc = level.image;
   const name = nickname.trim();
   const sub = step === 6 ? `${name ? `${name}님은 ` : ""}${level.name}! 앞으로 제가 도움을 드릴게요.` : s.sub;
 
@@ -143,6 +138,7 @@ export default function Onboarding({
             value={nickname}
             onChange={(e) => setNickname(e.target.value)}
             placeholder="예: 집크크"
+            onFocus={(e) => e.target.select()}
             maxLength={12}
             autoFocus
             aria-label="불러드릴 이름"
@@ -262,11 +258,14 @@ const Wrap = ({ embedded, children }: { embedded: boolean; children: React.React
   embedded ? (
     <div className="embedded-step">{children}</div>
   ) : (
-    <main className="screen">
-      {children}
-      <Credit />
-    </main>
+    <main className="screen">{children}</main>
   );
+
+// 랜덤 이름: "수줍은 감자" 같은 아무 말
+const NAME_ADJ = ["수줍은", "조용한", "느긋한", "소심한", "말없는", "졸린", "배고픈", "눈치보는", "퇴근하고픈", "혼밥하는", "멍때리는", "낯가리는"];
+const NAME_NOUN = ["감자", "두부", "고양이", "펭귄", "만두", "오리", "너구리", "햄스터", "김밥", "곰돌이", "수달", "호빵"];
+const pick = <T,>(xs: T[]) => xs[Math.floor(Math.random() * xs.length)];
+const randomName = () => `${pick(NAME_ADJ)} ${pick(NAME_NOUN)}`;
 
 const sortAges = (xs: AgeGroup[]) => AGE_GROUPS.filter((a) => xs.includes(a));
 

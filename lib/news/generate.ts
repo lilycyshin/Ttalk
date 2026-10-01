@@ -7,11 +7,6 @@ import type { Candidate, InterestId } from "./sources";
 
 const INTEREST_IDS = INTERESTS.map((i) => i.id) as [InterestId, ...InterestId[]];
 
-const Opener = z.object({
-  opener: z.string().describe("점심 자리에서 바로 꺼낼 첫 마디. 한두 문장, 질문형"),
-  follow_up: z.string().describe("상대가 반응했을 때 이어갈 한 마디"),
-});
-
 const TopicSchema = z.object({
   headline: z.string().describe("카드 제목. 짧은 주제 이름, 15자 이내"),
   summary: z
@@ -26,7 +21,8 @@ const TopicSchema = z.object({
     .string()
     .describe("사람들이 네이버에 실제로 검색하는 단어 하나. 띄어쓰기 없는 2~8자 명사로, 인물·작품·브랜드 이름이나 대표 키워드 (예: 제니, 문근영, 가을야구, 코스피, 아이폰18). 문장이나 여러 단어 조합은 쓰지 않는다"),
   source_titles: z.array(z.string()).describe("근거가 된 후보 제목. 후보 목록의 제목을 글자 그대로 옮긴다"),
-  openers: z.object({ "20s": Opener, "30s": Opener, "40s": Opener, "50s_plus": Opener }),
+  // 화면엔 같이 먹는 사람 중 가장 윗사람에게 하는 멘트 하나만 쓴다. 그 하나만 받아서 출력을 줄인다.
+  opener: z.string().describe("점심 자리에서 바로 꺼낼 첫 마디. 한두 문장, 질문형. 프롬프트에 적힌 상대에게 하는 말투"),
 });
 const ResultSchema = z.object({ topics: z.array(TopicSchema) });
 
@@ -68,12 +64,17 @@ function buildPrompt(
     const head = `${i + 1}. ${c.title}${c.source ? ` (${c.source})` : ""}`;
     return c.description ? `${head}\n   내용: ${c.description}` : head;
   });
-  // 같이 먹는 사람 연령대가 관심 가질 만한 기사를 우선 고르게 한다.
+  // 같이 먹는 사람 연령대가 관심 가질 만한 기사를 우선 고르게 하고, 멘트는 그중 가장 윗사람에게 하는 말투로.
+  const speakTo = ages.length ? ages[ages.length - 1] : "30s";
   const who = ages.length
     ? `\n오늘 같이 점심 먹는 사람: ${ages.map((a) => AGE_LABEL[a]).join(", ")}. 이 연령대가 실제로 관심 갖고 반응할 만한 기사를 우선 골라라.`
     : "";
-  return `지금은 ${now}. 모든 후보는 최근 24시간 기사다. 관심사 "${label}"(${interest}) 뉴스 후보다. 여기서 스몰토크 토픽을 ${count}개 골라라. 제외 기준에 걸리지 않는 후보가 있으면 반드시 ${count}개를 채운다. 같은 사건은 합치되, 다른 사건은 작은 소식이라도 따로 토픽으로 만든다.${who}\n\n${lines.join("\n")}`;
+  const tone = `\nopener는 ${AGE_LABEL[speakTo]}(${speakTo}) 상대에게 하는 말투로 쓴다.`;
+  return `지금은 ${now}. 모든 후보는 최근 24시간 기사다. 관심사 "${label}"(${interest}) 뉴스 후보다. 여기서 스몰토크 토픽을 ${count}개 골라라. 제외 기준에 걸리지 않는 후보가 있으면 반드시 ${count}개를 채운다. 같은 사건은 합치되, 다른 사건은 작은 소식이라도 따로 토픽으로 만든다.${who}${tone}\n\n${lines.join("\n")}`;
 }
+
+// 한 번 부를 때 만들게 하는 토픽 수. 출력이 길수록 느리니 작게 나눠 동시에 부른다.
+const PER_CALL = 4;
 
 export async function generateForInterest(
   ai: GoogleGenAI,
@@ -83,15 +84,32 @@ export async function generateForInterest(
   count = 5,
   ages: AgeGroup[] = [],
 ): Promise<Topic[]> {
-  let data;
-  try {
-    data = await generateJson(ai, ResultSchema, SYSTEM, buildPrompt(interest, cands, date, count, ages));
-  } catch (e) {
-    throw new Error(`${interest}: ${e instanceof Error ? e.message : e}`);
+  // 후보 기사를 작은 묶음으로 나눠 동시에 부른다. 한 번에 많이 쓰게 하면 느리다 (출력 길이에 비례).
+  const calls = Math.max(1, Math.min(Math.ceil(count / PER_CALL), Math.ceil(cands.length / 3)));
+  // 기사를 번갈아 나눠서 묶음마다 비슷한 주제가 섞이게
+  const chunks = Array.from({ length: calls }, (_, k) => cands.filter((_, i) => i % calls === k));
+  const each = Math.ceil(count / calls);
+  const results = await Promise.allSettled(
+    chunks.map((chunk) => generateJson(ai, ResultSchema, SYSTEM, buildPrompt(interest, chunk, date, each, ages))),
+  );
+  const ok = results.flatMap((r) => (r.status === "fulfilled" ? r.value.topics : []));
+  if (!ok.length) {
+    const failed = results.find((r): r is PromiseRejectedResult => r.status === "rejected");
+    throw new Error(`${interest}: ${failed?.reason instanceof Error ? failed.reason.message : failed?.reason}`);
   }
-  // 요청한 관심사 태그가 빠졌으면 붙인다. 앱은 태그로 필터링하므로 빠지면 안 보인다.
-  return data.topics.map((t) => ({
-    ...t,
-    interests: t.interests.includes(interest) ? t.interests : [interest, ...t.interests],
-  }));
+  // 묶음 사이에 같은 사건이 겹치면 하나만. 멘트는 모든 연령 칸에 같은 걸 넣는다 (화면은 한 칸만 씀).
+  const seen = new Set<string>();
+  return ok
+    .filter((t) => {
+      const key = t.source_titles[0] ?? t.headline;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .map(({ opener, ...t }) => ({
+      ...t,
+      openers: Object.fromEntries(AGE_GROUPS.map((a) => [a, { opener, follow_up: "" }])) as Topic["openers"],
+      // 요청한 관심사 태그가 빠졌으면 붙인다. 앱은 태그로 필터링하므로 빠지면 안 보인다.
+      interests: t.interests.includes(interest) ? t.interests : [interest, ...t.interests],
+    }));
 }

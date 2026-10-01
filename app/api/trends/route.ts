@@ -1,6 +1,6 @@
 // 실검: 지금 한국에서 많이 검색되는 키워드 (구글 트렌드 RSS, 키 없음). 항상 10개.
 // 트렌드 피드는 한 번에 10개뿐이라 걸러내고 모자라면 구글 뉴스 연예·스포츠·IT 헤드라인으로 채운다.
-// Gemini가 키워드마다 기사 요약을 붙인다. 화면엔 요약과 출처 기사 1개. 결과는 10분 캐시.
+// Gemini가 키워드마다 기사 요약을 붙인다. 화면엔 요약과 출처 기사 1개. 1시간(정시) 단위로 새로 만든다.
 // 사건·사고·정치처럼 점심에 꺼내기 곤란한 건 뺀다.
 import { unstable_cache } from "next/cache";
 import { XMLParser } from "fast-xml-parser";
@@ -12,7 +12,8 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 type News = { title: string; url: string; source: string };
-export type Trend = { keyword: string; why?: string; news: News[]; fromNews?: boolean };
+// startedAt: 구글 트렌드에 오른 시각 (NEW 표시용)
+export type Trend = { keyword: string; why?: string; news: News[]; fromNews?: boolean; startedAt?: string };
 
 const COUNT = 10;
 const UA = { "User-Agent": "Mozilla/5.0 (compatible; lunchtalk/0.1)" };
@@ -42,6 +43,7 @@ async function fetchTrends(): Promise<Trend[]> {
   return items
     .map((it) => ({
       keyword: String(it.title),
+      startedAt: it.pubDate ? new Date(String(it.pubDate)).toISOString() : undefined,
       n: traffic(it["ht:approx_traffic"]),
       news: arr<any>(it["ht:news_item"]).map((x) => ({
         title: cleanNews(String(x["ht:news_item_title"] ?? "")),
@@ -52,7 +54,7 @@ async function fetchTrends(): Promise<Trend[]> {
     .map((t) => ({ ...t, news: t.news.filter((n) => isKorean(n.title)) }))
     .filter((t) => t.news.length > 0 && !isAwkwardTitle(t.keyword) && !t.news.some((n) => isAwkwardTitle(n.title)))
     .sort((a, b) => b.n - a.n)
-    .map(({ keyword, news }) => ({ keyword, news: news.slice(0, 2) }));
+    .map(({ keyword, news, startedAt }) => ({ keyword, startedAt, news: news.slice(0, 2) }));
 }
 
 // 채우기용: 구글 뉴스 섹션 헤드라인을 연예·스포츠·IT 순서로 번갈아 뽑는다.
@@ -133,18 +135,20 @@ async function explain(trends: Trend[]): Promise<Trend[]> {
   }
 }
 
-async function build() {
+// hour: 한국 시간 기준 "YYYY-MM-DD HH". 정시마다 새로 만든다.
+async function build(_hour: string) {
   const trends = (await fetchTrends()).slice(0, COUNT);
   const taken = new Set(trends.flatMap((t) => t.news.map((n) => n.title.slice(0, 15))));
   const filled = [...trends, ...(await supplement(COUNT - trends.length, taken))];
   return { trends: await explain(filled), updatedAt: new Date().toISOString() };
 }
 
-const cached = unstable_cache(build, ["trends-v7"], { revalidate: 600 });
+const cached = unstable_cache(build, ["trends-v8"], { revalidate: 3600 });
+const hourKST = () => new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 13).replace("T", " ");
 
 export async function GET() {
   try {
-    return Response.json(await cached());
+    return Response.json({ ...(await cached(hourKST())), hour: hourKST() });
   } catch (e) {
     console.error("trends failed:", e);
     return Response.json({ error: "trends unavailable" }, { status: 503 });

@@ -4,6 +4,8 @@ import { z } from "zod";
 
 // 모델은 GEMINI_MODEL 환경변수로 바꿀 수 있다.
 export const MODEL = process.env.GEMINI_MODEL || "gemini-flash-lite-latest";
+// 가라톡처럼 품질보다 값이 중요한 곳: 환경변수와 상관없이 가장 싼 Flash Lite.
+export const CHEAP_MODEL = "gemini-flash-lite-latest";
 
 export const geminiClient = () =>
   process.env.GEMINI_API_KEY ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY }) : null;

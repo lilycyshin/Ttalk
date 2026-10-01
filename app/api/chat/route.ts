@@ -1,6 +1,6 @@
 // 가(라)톡: 점심 자리에서 "카톡하는 척"할 때 친구처럼 답장해 주는 가짜 대화 상대.
 // POST { messages: [{ from: "me" | "friend", text }] } → { reply }
-import { MODEL, geminiClient } from "@/lib/gemini";
+import { CHEAP_MODEL, geminiClient } from "@/lib/gemini";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -25,7 +25,7 @@ export async function POST(req: Request) {
     const body = await req.json();
     messages = (Array.isArray(body?.messages) ? body.messages : [])
       .filter((m: Msg) => (m?.from === "me" || m?.from === "friend") && typeof m.text === "string")
-      .slice(-16)
+      .slice(-10) // 최근 10개만 보내서 입력 비용을 줄인다
       .map((m: Msg) => ({ from: m.from, text: m.text.slice(0, 300) }));
   } catch {}
   if (!messages.length || messages[messages.length - 1].from !== "me")
@@ -36,9 +36,9 @@ export async function POST(req: Request) {
 
   try {
     const res = await ai.models.generateContent({
-      model: MODEL,
+      model: CHEAP_MODEL,
       contents: messages.map((m) => ({ role: m.from === "me" ? "user" : "model", parts: [{ text: m.text }] })),
-      config: { systemInstruction: SYSTEM, maxOutputTokens: 200 },
+      config: { systemInstruction: SYSTEM, maxOutputTokens: 120 },
     });
     const reply = res.text?.trim();
     if (!reply) throw new Error(`empty (${res.candidates?.[0]?.finishReason ?? "unknown"})`);
