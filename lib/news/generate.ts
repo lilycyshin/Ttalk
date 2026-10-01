@@ -37,6 +37,7 @@ const SYSTEM = `너는 내향적인 직장인이 점심시간에 회사 사람�
 - 제외: 정치 갈등, 사건·사고·범죄·사망, 재난 피해, 종교, 성별·세대 갈등, 특정인 사생활 폭로, 광고성 기사. 후보가 전부 이런 거면 토픽을 0개로 돌려준다.
 - 서울에서 일하는 직장인 기준이다. 서울이 아닌 다른 지역 소식은 뺀다. 전국 공통 화제는 괜찮다.
 - 같은 사건은 하나로 합친다.
+- 요청받은 관심사와 실제로 관련 있는 기사만 고른다. 검색에 걸렸어도 주제가 다른 기사(예: 야구 관심사인데 정치·연예 기사)는 뺀다.
 - interests 태그는 토픽 내용과 실제로 관련 있는 것만 단다.
 
 멘트 규칙:
@@ -54,8 +55,15 @@ const SYSTEM = `너는 내향적인 직장인이 점심시간에 회사 사람�
 - 의견을 강요하거나 논쟁을 부르는 질문은 하지 않는다 (예: "집값 떨어져야죠?" 금지).
 - 후보 제목과 내용에 없는 사실(점수, 수치, 이름)을 지어내지 않는다.`;
 
-function buildPrompt(interest: InterestId, cands: Candidate[], date: string, count: number, ages: AgeGroup[]) {
+function buildPrompt(
+  interest: InterestId,
+  cands: Candidate[],
+  date: string,
+  count: number,
+  ages: AgeGroup[],
+) {
   const label = INTERESTS.find((i) => i.id === interest)!.label;
+  const now = `${date} ${new Date().toLocaleTimeString("ko-KR", { timeZone: "Asia/Seoul", hour: "2-digit", minute: "2-digit" })}`;
   const lines = cands.map((c, i) => {
     const head = `${i + 1}. ${c.title}${c.source ? ` (${c.source})` : ""}`;
     return c.description ? `${head}\n   내용: ${c.description}` : head;
@@ -64,7 +72,7 @@ function buildPrompt(interest: InterestId, cands: Candidate[], date: string, cou
   const who = ages.length
     ? `\n오늘 같이 점심 먹는 사람: ${ages.map((a) => AGE_LABEL[a]).join(", ")}. 이 연령대가 실제로 관심 갖고 반응할 만한 기사를 우선 골라라.`
     : "";
-  return `오늘은 ${date}. 관심사 "${label}"(${interest}) 뉴스 후보다. 여기서 스몰토크 토픽을 ${count}개 골라라. 쓸 만한 후보가 있으면 되도록 개수를 채우고, 최소 3개는 고른다.${who}\n\n${lines.join("\n")}`;
+  return `지금은 ${now}. 모든 후보는 최근 24시간 기사다. 관심사 "${label}"(${interest}) 뉴스 후보다. 여기서 스몰토크 토픽을 ${count}개 골라라. 제외 기준에 걸리지 않는 후보가 있으면 반드시 ${count}개를 채운다. 같은 사건은 합치되, 다른 사건은 작은 소식이라도 따로 토픽으로 만든다.${who}\n\n${lines.join("\n")}`;
 }
 
 export async function generateForInterest(
