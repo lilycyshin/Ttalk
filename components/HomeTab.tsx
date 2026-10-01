@@ -1,15 +1,16 @@
 "use client";
 import Mascot from "./Mascot";
 import Credit from "./Credit";
+import TabIcon from "./TabIcon";
 import { introvertLevel } from "@/lib/persona";
 import type { Profile } from "@/lib/topics";
 
 type Go = (tab: "trends" | "keywords" | "talk") => void;
 
-const ACTIONS: { tab: Parameters<Go>[0]; label: string }[] = [
-  { tab: "trends", label: "실시간 트렌드에서 스몰톡 할 만한 거 찾아보기" },
-  { tab: "keywords", label: "키워드별 점심시간 스몰톡 주제 추천받기" },
-  { tab: "talk", label: "친구와 카톡하는 척하기" },
+const ACTIONS: { tab: Parameters<Go>[0]; title: string; desc: string }[] = [
+  { tab: "trends", title: "실시간 트렌드", desc: "스몰톡 거리 찾기" },
+  { tab: "keywords", title: "키워드 주제", desc: "점심 얘깃거리 추천" },
+  { tab: "talk", title: "카톡하는 척", desc: "어색할 땐 폰 보기" },
 ];
 
 // 홈 탭: 인사와 기능 바로가기 버튼.
@@ -25,8 +26,12 @@ export default function HomeTab({ profile, go }: { profile: Profile; go: Go }) {
 
       <div className="home-actions">
         {ACTIONS.map((a) => (
-          <button key={a.tab} className="btn wide home-action" onClick={() => go(a.tab)}>
-            {a.label}
+          <button key={a.tab} className="home-tile" onClick={() => go(a.tab)}>
+            <span className="home-tile-icon">
+              <TabIcon name={a.tab} />
+            </span>
+            <b>{a.title}</b>
+            <span>{a.desc}</span>
           </button>
         ))}
       </div>

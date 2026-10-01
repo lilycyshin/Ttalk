@@ -261,8 +261,19 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .screen:has(.bottom) .credit { margin-top: 0; }
 
 /* 홈 바로가기 버튼 */
-.home-actions { width: 100%; display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
-.home-action { font-size: 15px; font-weight: 600; padding: 16px 14px; text-align: left; }
+.home-actions { width: 100%; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
+.home-tile {
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 6px; text-align: center;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 16px 6px 14px;
+  box-shadow: 0 2px 8px rgba(25, 31, 40, 0.06); transition: transform 0.08s, background 0.15s;
+}
+.home-tile:active { transform: scale(0.96); background: var(--soft); }
+.home-tile-icon {
+  width: 48px; height: 48px; border-radius: 16px; display: grid; place-items: center;
+  background: color-mix(in srgb, var(--point) 12%, transparent); color: var(--point); margin-bottom: 2px;
+}
+.home-tile b { font-size: 14px; font-weight: 700; letter-spacing: -0.02em; }
+.home-tile span:last-child { font-size: 12px; color: var(--muted); line-height: 1.35; word-break: keep-all; }
 
 /* 실검 순위 변화 표시 */
 .trend-head { display: flex; align-items: center; gap: 6px; min-width: 0; }
