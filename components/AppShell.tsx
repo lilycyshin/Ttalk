@@ -1,11 +1,11 @@
 "use client";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import HomeTab from "./HomeTab";
 import Trends from "./Trends";
 import KeywordNews from "./KeywordNews";
 import GaraTalk from "./GaraTalk";
-import Game from "./Game";
 import TabIcon from "./TabIcon";
+import Credit from "./Credit";
 import type { Profile } from "@/lib/topics";
 
 const TABS = [
@@ -13,7 +13,6 @@ const TABS = [
   { id: "trends", label: "실검" },
   { id: "keywords", label: "키워드별" },
   { id: "talk", label: "가라톡" },
-  { id: "game", label: "게임" },
 ] as const;
 type TabId = (typeof TABS)[number]["id"];
 
@@ -32,17 +31,18 @@ export default function AppShell({
 }) {
   const [tab, setTab] = useState<TabId>("trends");
   const [prev, setPrev] = useState<TabId>("trends");
+  const mainRef = useRef<HTMLElement>(null);
   const go = (id: TabId) => {
     if (id === "talk") setPrev(tab === "talk" ? prev : tab);
     setTab(id);
-    window.scrollTo(0, 0);
+    mainRef.current?.scrollTo(0, 0);
   };
 
   if (tab === "talk") return <GaraTalk onBack={() => setTab(prev)} />;
 
   return (
     <div className="app">
-      <main className="screen home">
+      <main className="screen home" ref={mainRef}>
         <header className="status">
           <span className="brand">내향인 생존하기</span>
           <button className="btn small" onClick={onReset}>
@@ -52,7 +52,7 @@ export default function AppShell({
         {tab === "home" && <HomeTab profile={profile} />}
         {tab === "trends" && <Trends />}
         {tab === "keywords" && <KeywordNews profile={profile} fresh={fresh} onSave={onSave} />}
-        {tab === "game" && <Game profile={profile} />}
+        <Credit />
       </main>
 
       <nav className="tabbar" aria-label="메뉴">

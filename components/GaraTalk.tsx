@@ -14,6 +14,7 @@ export default function GaraTalk({ onBack }: { onBack: () => void }) {
   const [text, setText] = useState("");
   const [typing, setTyping] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
+  const boxRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     try {
@@ -33,6 +34,27 @@ export default function GaraTalk({ onBack }: { onBack: () => void }) {
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = prev;
+    };
+  }, []);
+  // 키보드가 올라와도 상단 바는 그대로: 화면을 "키보드에 안 가린 영역"(visualViewport)에 맞춰
+  // 높이를 줄이고 위치를 맞춘다. 줄어드는 건 대화 목록뿐이다. (iOS 사파리는 화면을 밀어 올리기 때문에 필요)
+  useEffect(() => {
+    const vv = window.visualViewport;
+    const box = boxRef.current;
+    if (!vv || !box) return;
+    const fit = () => {
+      box.style.height = `${vv.height}px`;
+      box.style.transform = `translateY(${vv.offsetTop}px)`;
+      endRef.current?.scrollIntoView({ block: "end" });
+    };
+    fit();
+    vv.addEventListener("resize", fit);
+    vv.addEventListener("scroll", fit);
+    window.addEventListener("resize", fit);
+    return () => {
+      vv.removeEventListener("resize", fit);
+      vv.removeEventListener("scroll", fit);
+      window.removeEventListener("resize", fit);
     };
   }, []);
 
@@ -59,7 +81,7 @@ export default function GaraTalk({ onBack }: { onBack: () => void }) {
   };
 
   return (
-    <div className="talk-full" role="dialog" aria-label="가라톡">
+    <div className="talk-full" role="dialog" aria-label="가라톡" ref={boxRef}>
       <header className="talk-bar">
         <button className="talk-back" onClick={onBack} aria-label="뒤로가기">
           <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden>

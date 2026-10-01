@@ -19,15 +19,6 @@ const PATHS: Record<string, React.ReactNode> = {
   ),
   // 말풍선
   talk: <path d="M12 5c4.4 0 8 2.7 8 6s-3.6 6-8 6c-.9 0-1.7-.1-2.5-.3L6 18.5l.8-3.1C5.1 14.3 4 12.7 4 11c0-3.3 3.6-6 8-6z" />,
-  // 게임패드
-  game: (
-    <>
-      <rect x="3" y="8" width="18" height="10" rx="4" />
-      <path d="M8 11v4M6 13h4" />
-      <circle cx="15.5" cy="12" r=".8" />
-      <circle cx="17.5" cy="14" r=".8" />
-    </>
-  ),
 };
 
 export default function TabIcon({ name }: { name: keyof typeof PATHS | string }) {

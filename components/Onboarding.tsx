@@ -2,6 +2,7 @@
 import { useState } from "react";
 import Mascot from "./Mascot";
 import Typewriter from "./Typewriter";
+import Credit from "./Credit";
 import { AGE_GROUPS, AGE_LABEL, INTERESTS, type AgeGroup, type Profile } from "@/lib/topics";
 import { INTROVERT_LEVELS, sceneImage, TEAM_MOODS, TEAM_MOOD_LABEL, TEAM_MOOD_SYMPATHY, introvertLevel, type TeamMood } from "@/lib/persona";
 
@@ -48,11 +49,10 @@ export default function Onboarding({
   const s = STEPS[step];
   const level = introvertLevel(introversion ?? 2);
   const title = step === 6 ? TEAM_MOOD_SYMPATHY[teamMood ?? "normal"] : s.title;
-  // 같이 먹는 사람: "다음"을 누르면 잠깐 그림이 바뀐다 (윗사람이 끼어 있으면 진땀 빼는 그림, 또래·후배뿐이면 편하게 먹는 그림).
-  const [sceneShown, setSceneShown] = useState(false);
+  // 키워드 고르는 화면: 오늘 같이 먹는 사람에 맞춘 그림 (윗사람이 끼어 있으면 진땀 빼는 그림, 또래·후배뿐이면 편하게 먹는 그림).
   const hasSenior = !!myAge && targetAges.some((a) => AGE_GROUPS.indexOf(a) > AGE_GROUPS.indexOf(myAge));
   const mascotSrc =
-    step === 1 && sceneShown && introversion !== undefined
+    step === 2 && targetAges.length > 0 && introversion !== undefined
       ? sceneImage(introversion, hasSenior ? "senior" : "peer")
       : level.image;
   const name = nickname.trim();
@@ -75,16 +75,6 @@ export default function Onboarding({
       nickname: name || undefined,
     });
   const next = () => (isLast ? finish() : goTo(pos + 1));
-  // 같이 먹는 사람 단계의 "다음": 그림과 한마디를 1.5초 보여주고 넘어간다.
-  const confirmTargets = () => {
-    if (sceneShown) return;
-    setSceneShown(true);
-    setReaction(hasSenior ? "윗분이랑 먹는 날이네요. 제가 할 말 챙겨 드릴게요" : "편한 자리네요! 그래도 얘깃거리는 챙겨 가요");
-    setTimeout(() => {
-      setSceneShown(false);
-      next();
-    }, 1500);
-  };
   // 바로 넘어가는 선택: 고른 버튼 색이 바뀐 걸 잠깐 보여주고 넘어간다.
   const pickThenNext = (apply: () => void) => {
     apply();
@@ -229,7 +219,7 @@ export default function Onboarding({
             ))}
           </div>
           <div className="bottom">
-            <button className="btn primary wide" disabled={targetAges.length === 0 || sceneShown} onClick={confirmTargets}>
+            <button className="btn primary wide" disabled={targetAges.length === 0} onClick={next}>
               {targetAges.length === 0 ? "한 분 이상 골라주세요" : isLast ? "오늘 뉴스 보기" : "다음"}
             </button>
           </div>
@@ -269,7 +259,14 @@ export default function Onboarding({
 }
 
 const Wrap = ({ embedded, children }: { embedded: boolean; children: React.ReactNode }) =>
-  embedded ? <div className="embedded-step">{children}</div> : <main className="screen">{children}</main>;
+  embedded ? (
+    <div className="embedded-step">{children}</div>
+  ) : (
+    <main className="screen">
+      {children}
+      <Credit />
+    </main>
+  );
 
 const sortAges = (xs: AgeGroup[]) => AGE_GROUPS.filter((a) => xs.includes(a));
 

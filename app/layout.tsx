@@ -9,7 +9,13 @@ export const metadata: Metadata = {
   icons: { icon: "/icons/icon-192.png", apple: "/icons/apple-touch-icon.png" },
 };
 
-export const viewport: Viewport = { themeColor: "#FFFFFF", width: "device-width", initialScale: 1 };
+// resizes-content: 안드로이드에서 키보드가 올라오면 화면 높이 자체가 줄어든다 (가라톡 상단 고정).
+export const viewport: Viewport = {
+  themeColor: "#FFFFFF",
+  width: "device-width",
+  initialScale: 1,
+  interactiveWidget: "resizes-content",
+};
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -22,7 +28,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         {children}
-        <footer className="credit">개발자: lilycyshin@gmail.com</footer>
         <RegisterSW />
       </body>
     </html>

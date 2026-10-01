@@ -13,7 +13,8 @@
 }
 
 * { box-sizing: border-box; }
-html, body { margin: 0; padding: 0; }
+/* 앱처럼: 화면 높이에 딱 맞추고, 넘치는 내용은 각 화면 안에서만 스크롤 */
+html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; overscroll-behavior: none; }
 body {
   background: var(--bg);
   color: var(--ink);
@@ -27,9 +28,10 @@ button { font: inherit; color: inherit; cursor: pointer; }
 
 .screen {
   max-width: 440px;
-  min-height: calc(100dvh - 40px);
+  height: 100dvh;
+  overflow-y: auto;
   margin: 0 auto;
-  padding: 20px 16px 32px;
+  padding: 20px 16px 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -137,7 +139,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 
 
 /* 맨 아래 개발자 표시 */
-.credit { text-align: center; color: var(--muted); font-size: 11px; padding: 0 16px 24px; opacity: 0.8; }
+.credit { margin-top: auto; padding: 24px 16px 16px; text-align: center; color: var(--muted); font-size: 11px; opacity: 0.8; }
 
 /* 질문 타이핑 효과 커서 */
 .caret { display: inline-block; width: 2px; height: 0.9em; margin-left: 2px; background: currentColor; vertical-align: -0.08em; animation: blink 0.9s steps(1) infinite; }
@@ -150,9 +152,10 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .dots-spacer { height: 36px; }
 
 /* 하단 탭 바 */
-.app .screen { padding-bottom: 110px; }
+.app { height: 100dvh; display: flex; flex-direction: column; }
+.app .screen { flex: 1; min-height: 0; height: auto; width: 100%; }
 .tabbar {
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
+  flex: none;
   display: flex; justify-content: center; gap: 4px;
   background: var(--panel); border-top: 1px solid var(--line);
   padding: 12px 16px calc(14px + env(safe-area-inset-bottom));
@@ -162,7 +165,6 @@ button { font: inherit; color: inherit; cursor: pointer; }
   padding: 10px 0; display: grid; place-items: center; color: var(--muted);
 }
 .tab-btn.on { color: var(--point); background: color-mix(in srgb, var(--point) 10%, transparent); }
-.app ~ .credit, .app + .credit { padding-bottom: 104px; }
 
 /* 실검 탭 */
 .trends { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
@@ -186,7 +188,6 @@ button { font: inherit; color: inherit; cursor: pointer; }
   background: #b9cfe0; border-radius: 16px; padding: 14px 10px; min-height: 52dvh;
   display: flex; flex-direction: column; gap: 8px;
 }
-.rehearsal .talk-body { background: var(--soft); min-height: 30dvh; }
 .bubble-row { display: flex; gap: 6px; align-items: flex-end; }
 .bubble-row.me { justify-content: flex-end; }
 .avatar {
@@ -202,32 +203,6 @@ button { font: inherit; color: inherit; cursor: pointer; }
   border: 1px solid var(--line); border-radius: 12px; background: var(--panel); color: var(--ink);
 }
 .talk-input .btn { flex: none; padding: 10px 16px; }
-
-/* 스몰토크 생존기 */
-.scenarios { list-style: none; padding: 0; margin: 4px 0 0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.scenario {
-  width: 100%; height: 100%; text-align: left; background: var(--panel); border: 1px solid var(--line);
-  border-radius: 14px; padding: 12px; display: flex; flex-direction: column; gap: 4px;
-}
-.scenario b { font-size: 15px; }
-.scenario span { font-size: 12px; color: var(--muted); line-height: 1.4; }
-.scenario:active { background: var(--soft); }
-.pick-label { text-align: center; font-weight: 600; margin: 8px 0 12px; }
-.rehearsal { margin-top: 12px; }
-.rehearsal-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
-.rehearsal-head span { font-size: 12px; color: var(--muted); flex: none; }
-.situation { font-size: 13px; color: var(--muted); margin: 4px 0 10px; }
-.suggestions { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
-.suggestion {
-  text-align: left; background: var(--panel); border: 1px solid var(--point); color: var(--point);
-  border-radius: 12px; padding: 10px 12px; font-size: 14px; font-weight: 600;
-}
-.feedback { margin-top: 12px; border: 1px solid var(--line); border-radius: 16px; padding: 14px; font-size: 14px; line-height: 1.55; }
-.feedback p { margin: 0 0 6px; }
-.feedback b { margin-right: 6px; }
-.score { font-size: 15px; }
-.score b { color: var(--point); font-size: 22px; margin: 0 2px; }
-.feedback-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 10px; }
 
 /* 내향 정도 선택 */
 .levels { width: 100%; display: flex; flex-direction: column; gap: 8px; }
@@ -247,7 +222,10 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .embedded-step { display: flex; flex-direction: column; align-items: center; min-height: 70dvh; padding-top: 8px; }
 
 /* 가라톡 전체 화면 */
-.talk-full { position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column; background: #b9cfe0; }
+.talk-full {
+  position: fixed; top: 0; left: 0; right: 0; height: 100dvh; z-index: 50;
+  display: flex; flex-direction: column; background: #b9cfe0; overflow: hidden;
+}
 .talk-bar {
   flex: none; display: flex; align-items: center; gap: 8px; padding: 10px 12px;
   padding-top: calc(10px + env(safe-area-inset-top)); background: #b9cfe0;
@@ -255,7 +233,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .talk-bar b { flex: 1; font-size: 17px; }
 .talk-back { background: none; border: 0; padding: 4px; display: grid; place-items: center; color: var(--ink); }
 .talk-clear { background: none; border: 0; font-size: 13px; color: #4a5a68; }
-.talk-scroll { flex: 1; overflow-y: auto; padding: 8px 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+.talk-scroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 8px 10px 12px; display: flex; flex-direction: column; gap: 8px; }
 .talk-compose {
   flex: none; display: flex; gap: 6px; background: #fff; padding: 8px 10px;
   padding-bottom: calc(8px + env(safe-area-inset-bottom));
@@ -276,3 +254,5 @@ button { font: inherit; color: inherit; cursor: pointer; }
   padding: 14px 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); color: var(--ink);
 }
 .name-input:focus { outline: none; border-color: var(--point); }
+/* 아래 버튼이 있는 화면은 버튼이 바닥으로 가고, 개발자 표시는 그 바로 밑에 */
+.screen:has(.bottom) .credit { margin-top: 0; }

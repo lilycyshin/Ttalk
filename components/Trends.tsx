@@ -25,7 +25,6 @@ export default function Trends() {
     <>
       <section className="hero">
         <h1 className="title">실시간 검색어</h1>
-        <p className="sub">누르면 왜 떴는지랑 써먹을 한마디가 나와요</p>
       </section>
 
       {error && (
