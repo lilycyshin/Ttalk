@@ -9,11 +9,15 @@ export const metadata: Metadata = {
   icons: { icon: "/icons/icon-192.png", apple: "/icons/apple-touch-icon.png" },
 };
 
+// 앱처럼 화면 크기 고정: 확대·축소 막기. viewportFit cover로 아이폰 홈 바 영역(safe-area)을 계산에 넣는다.
 // resizes-content: 안드로이드에서 키보드가 올라오면 화면 높이 자체가 줄어든다 (가라톡 상단 고정).
 export const viewport: Viewport = {
   themeColor: "#FFFFFF",
   width: "device-width",
   initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
   interactiveWidget: "resizes-content",
 };
 
