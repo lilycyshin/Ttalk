@@ -4,6 +4,7 @@ import { generateJson } from "@/lib/gemini";
 import { z } from "zod";
 import { AGE_GROUPS, AGE_LABEL, INTERESTS, type AgeGroup, type Topic } from "@/lib/topics";
 import type { Candidate, InterestId } from "./sources";
+import { cluster } from "./similar";
 
 const INTEREST_IDS = INTERESTS.map((i) => i.id) as [InterestId, ...InterestId[]];
 
@@ -51,6 +52,12 @@ const SYSTEM = `너는 내향적인 직장인이 점심시간에 회사 사람�
 - 의견을 강요하거나 논쟁을 부르는 질문은 하지 않는다 (예: "집값 떨어져야죠?" 금지).
 - 후보 제목과 내용에 없는 사실(점수, 수치, 이름)을 지어내지 않는다.`;
 
+// 범위가 헷갈리기 쉬운 관심사는 무엇까지 넣는지 적어 준다.
+const SCOPE: Partial<Record<InterestId, string>> = {
+  tech_it:
+    "AI·IT는 인공지능(챗GPT 같은 AI 서비스, AI 기업), IT 서비스·앱, 스마트폰·전자기기, 반도체·빅테크 소식만이다. 식품·화장품·패션 같은 일반 신제품, IT와 상관없는 기업 소식은 고르지 않는다. 고를 게 없으면 적게 골라도 된다.",
+};
+
 function buildPrompt(
   interest: InterestId,
   cands: Candidate[],
@@ -59,6 +66,7 @@ function buildPrompt(
   ages: AgeGroup[],
 ) {
   const label = INTERESTS.find((i) => i.id === interest)!.label;
+  const scope = SCOPE[interest] ? `\n${SCOPE[interest]}` : "";
   const now = `${date} ${new Date().toLocaleTimeString("ko-KR", { timeZone: "Asia/Seoul", hour: "2-digit", minute: "2-digit" })}`;
   const lines = cands.map((c, i) => {
     const head = `${i + 1}. ${c.title}${c.source ? ` (${c.source})` : ""}`;
@@ -70,7 +78,7 @@ function buildPrompt(
     ? `\n오늘 같이 점심 먹는 사람: ${ages.map((a) => AGE_LABEL[a]).join(", ")}. 이 연령대가 실제로 관심 갖고 반응할 만한 기사를 우선 골라라.`
     : "";
   const tone = `\nopener는 ${AGE_LABEL[speakTo]}(${speakTo}) 상대에게 하는 말투로 쓴다.`;
-  return `지금은 ${now}. 모든 후보는 최근 24시간 기사다. 관심사 "${label}"(${interest}) 뉴스 후보다. 여기서 스몰토크 토픽을 ${count}개 골라라. 제외 기준에 걸리지 않는 후보가 있으면 반드시 ${count}개를 채운다. 같은 사건은 합치되, 다른 사건은 작은 소식이라도 따로 토픽으로 만든다.${who}${tone}\n\n${lines.join("\n")}`;
+  return `지금은 ${now}. 모든 후보는 최근 24시간 기사다. 관심사 "${label}"(${interest}) 뉴스 후보다. 여기서 스몰토크 토픽을 ${count}개 골라라. 제외 기준에 걸리지 않는 후보가 있으면 반드시 ${count}개를 채운다. 같은 사건은 합치되, 다른 사건은 작은 소식이라도 따로 토픽으로 만든다.${scope}${who}${tone}\n\n${lines.join("\n")}`;
 }
 
 // 한 번 부를 때 만들게 하는 토픽 수. 출력이 길수록 느리니 작게 나눠 동시에 부른다.
@@ -86,8 +94,11 @@ export async function generateForInterest(
 ): Promise<Topic[]> {
   // 후보 기사를 작은 묶음으로 나눠 동시에 부른다. 한 번에 많이 쓰게 하면 느리다 (출력 길이에 비례).
   const calls = Math.max(1, Math.min(Math.ceil(count / PER_CALL), Math.ceil(cands.length / 3)));
-  // 기사를 번갈아 나눠서 묶음마다 비슷한 주제가 섞이게
-  const chunks = Array.from({ length: calls }, (_, k) => cands.filter((_, i) => i % calls === k));
+  // 같은 사건 기사끼리는 한 묶음에 넣어 모델이 하나로 합치게 하고, 사건 단위로 번갈아 나눈다.
+  // (사건이 여러 묶음에 흩어지면 묶음마다 같은 토픽을 따로 만들어 중복이 생긴다)
+  const events = cluster(cands, (c) => c.title);
+  const chunks: Candidate[][] = Array.from({ length: calls }, () => []);
+  events.forEach((g, i) => chunks[i % calls].push(...g));
   const each = Math.ceil(count / calls);
   const results = await Promise.allSettled(
     chunks.map((chunk) => generateJson(ai, ResultSchema, SYSTEM, buildPrompt(interest, chunk, date, each, ages))),

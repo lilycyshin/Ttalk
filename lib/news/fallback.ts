@@ -1,6 +1,7 @@
 // Gemini API 키가 없거나 생성이 실패했을 때: 기사 제목으로 멘트를 틀에 맞춰 만든다. 말투는 LLM보다 단조롭다.
 import { AGE_GROUPS, INTERESTS, type Topic } from "@/lib/topics";
 import type { Candidate } from "./sources";
+import { cluster } from "./similar";
 
 // 스몰토크로 꺼내기 곤란한 기사는 제목 키워드로 거른다. LLM 경로에서는 프롬프트가 같은 일을 한다.
 const AVOID =
@@ -23,8 +24,9 @@ function topicPhrase(title: string) {
 }
 
 export function fallbackTopics(interestCands: Candidate[], count = 5): Topic[] {
-  return interestCands
-    .filter(isSmallTalkSafe)
+  // 같은 사건 기사는 하나만
+  return cluster(interestCands.filter(isSmallTalkSafe), (c) => c.title)
+    .map((g) => g[0])
     .slice(0, count)
     .map((c) => {
       const label = INTERESTS.find((i) => i.id === c.interest)!.label;

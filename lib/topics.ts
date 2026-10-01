@@ -20,7 +20,7 @@ export const INTERESTS = [
   { id: "music", label: "음악" },
   { id: "real_estate", label: "부동산" },
   { id: "stocks_economy", label: "주식·경제" },
-  { id: "tech_it", label: "IT·신제품" },
+  { id: "tech_it", label: "AI·IT" },
   { id: "food", label: "맛집·음식" },
   { id: "travel", label: "여행·교통" },
   { id: "weather_season", label: "날씨·계절" },

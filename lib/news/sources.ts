@@ -24,7 +24,7 @@ export const QUERIES: Record<InterestId, string[]> = {
   music: ["컴백", "콘서트"],
   real_estate: ["서울 아파트", "서울 부동산"],
   stocks_economy: ["코스피", "금리"],
-  tech_it: ["신제품 출시", "스마트폰"],
+  tech_it: ["AI 인공지능", "IT 테크", "스마트폰"],
   food: ["서울 맛집", "편의점 신상"],
   travel: ["서울 가볼만한곳", "여행"],
   weather_season: ["서울 날씨"],
@@ -39,6 +39,14 @@ export const QUERIES: Record<InterestId, string[]> = {
 const OTHER_REGION =
   /부산|대구|인천|광주|대전|울산|세종|경기|수원|성남|고양|용인|부천|안산|안양|화성|평택|강원|춘천|원주|강릉|충북|충남|충청|청주|천안|전북|전남|전라|전주|익산|목포|여수|순천|경북|경남|경상|포항|구미|창원|김해|진주|거제|제주|서귀포/;
 export const isSeoulOrNational = (c: Candidate) => !OTHER_REGION.test(c.title);
+
+// 검색어가 넓어서 엉뚱한 기사가 걸리는 관심사는 제목에 관련 단어가 있어야 남긴다.
+// AI·IT: "신제품"만 걸린 식품·화장품 기사 같은 건 뺀다.
+export const RELEVANT: Partial<Record<InterestId, RegExp>> = {
+  tech_it:
+    /AI|인공지능|챗GPT|GPT|LLM|오픈AI|제미나이|클로드|코파일럿|딥시크|생성형|에이전트|IT|테크|빅테크|반도체|엔비디아|GPU|칩|스마트폰|아이폰|갤럭시|폴더블|애플|구글|삼성전자|SK하이닉스|마이크로소프트|메타|네이버|카카오|앱|플랫폼|클라우드|데이터센터|소프트웨어|로봇|자율주행|휴머노이드|웨어러블|노트북|태블릿|OS|업데이트|개발자|스타트업|사이버|해킹|5G|6G|통신사/,
+};
+export const isRelevant = (interest: InterestId, text: string) => RELEVANT[interest]?.test(text) ?? true;
 
 // "제목 - 언론사" 꼬리표와 [속보] 같은 말머리를 뗀다.
 export function cleanTitle(title: string, source?: string) {
@@ -137,6 +145,7 @@ async function run(search: Search, interests: InterestId[], perInterest: number)
   const cands = results
     .flatMap((r) => (r.status === "fulfilled" ? r.value : []))
     .filter(isSeoulOrNational)
+    .filter((c) => isRelevant(c.interest, c.title))
     .filter((c) => c.title && !seen.has(c.title.slice(0, 20)) && seen.add(c.title.slice(0, 20)))
     .filter((c) => (count[c.interest] = (count[c.interest] ?? 0) + 1) <= perInterest);
   return { cands, errors };
