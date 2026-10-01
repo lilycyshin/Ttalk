@@ -1,10 +1,10 @@
 "use client";
 import { useEffect, useState } from "react";
 
-type Trend = { keyword: string; why?: string; talk?: string; news: { title: string; url: string; source: string }[] };
+type Trend = { keyword: string; why?: string; news: { title: string; url: string; source: string }[] };
 
 // 실검 탭: 지금 많이 검색되는 키워드 TOP 10.
-// 키워드를 누르면 왜 떴는지, 점심에 꺼낼 한마디, 관련 기사가 펼쳐진다.
+// 키워드를 누르면 기사 요약과 출처 기사 1개가 펼쳐진다.
 export default function Trends() {
   const [trends, setTrends] = useState<Trend[] | null>(null);
   const [error, setError] = useState(false);
@@ -41,6 +41,7 @@ export default function Trends() {
         <ol className="trends">
           {trends.map((t, i) => {
             const expanded = open === t.keyword;
+            const source = t.news[0];
             return (
               <li key={t.keyword} className="trend">
                 <button className="trend-row" onClick={() => setOpen(expanded ? null : t.keyword)} aria-expanded={expanded}>
@@ -50,21 +51,12 @@ export default function Trends() {
                     {t.why && <span className={expanded ? "trend-why full" : "trend-why"}>{t.why}</span>}
                   </span>
                 </button>
-                {expanded && (
+                {expanded && source && (
                   <div className="trend-more">
-                    {t.talk && <p className="trend-talk">“{t.talk}”</p>}
-                    {t.news.length > 0 && (
-                      <ul className="links">
-                        {t.news.map((n) => (
-                          <li key={n.url}>
-                            <a href={n.url} target="_blank" rel="noopener noreferrer">
-                              {n.title}
-                            </a>
-                            {n.source && <span> · {n.source}</span>}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
+                    <a className="trend-source" href={source.url} target="_blank" rel="noopener noreferrer">
+                      {source.title}
+                      {source.source && <span> · {source.source}</span>}
+                    </a>
                   </div>
                 )}
               </li>

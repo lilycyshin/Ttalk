@@ -1,6 +1,6 @@
 // 실검: 지금 한국에서 많이 검색되는 키워드 (구글 트렌드 RSS, 키 없음). 항상 10개.
 // 트렌드 피드는 한 번에 10개뿐이라 걸러내고 모자라면 구글 뉴스 연예·스포츠·IT 헤드라인으로 채운다.
-// Gemini가 키워드마다 왜 떴는지 설명과 점심에 꺼낼 한마디를 붙인다. 결과는 10분 캐시.
+// Gemini가 키워드마다 기사 요약을 붙인다. 화면엔 요약과 출처 기사 1개. 결과는 10분 캐시.
 // 사건·사고·정치처럼 점심에 꺼내기 곤란한 건 뺀다.
 import { unstable_cache } from "next/cache";
 import { XMLParser } from "fast-xml-parser";
@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 type News = { title: string; url: string; source: string };
-export type Trend = { keyword: string; why?: string; talk?: string; news: News[]; fromNews?: boolean };
+export type Trend = { keyword: string; why?: string; news: News[]; fromNews?: boolean };
 
 const COUNT = 10;
 const UA = { "User-Agent": "Mozilla/5.0 (compatible; lunchtalk/0.1)" };
@@ -95,18 +95,13 @@ const Explain = z.object({
     z.object({
       index: z.number().describe("입력 번호"),
       keyword: z.string().describe("검색어 항목은 그대로. (뉴스) 항목은 기사 제목을 보고 2~12자 짧은 주제 이름"),
-      why: z.string().describe("왜 화제인지 2~3문장. 관련 기사 제목에 있는 사실만 쓰고 지어내지 않는다"),
-      talk: z
-        .string()
-        .describe(
-          "점심 자리에서 꺼낼 자연스러운 한마디. 2030 구어체 해요체, 호칭 없이, 질문형. \"~기사 보셨어요?\"처럼 기사를 말하지 말고 일어난 일을 직접 말한다 (예: 광화문에서 오늘 공중쇼 한 거 보셨어요?)",
-        ),
+      why: z.string().describe("기사 요약. 무슨 일인지 2~3문장. 관련 기사 제목에 있는 사실만 쓰고 지어내지 않는다"),
     }),
   ),
 });
 
 const EXPLAIN_SYSTEM = `너는 회사 점심 자리에서 쓸 스몰토크를 도와주는 편집자다.
-지금 많이 검색되는 키워드(또는 화제 기사)와 관련 기사 제목이 주어진다. 항목마다 왜 화제인지 짧게 설명하고, 점심에 꺼낼 한마디를 만든다.
+지금 많이 검색되는 키워드(또는 화제 기사)와 관련 기사 제목이 주어진다. 항목마다 무슨 일인지 짧게 요약한다.
 - 설명은 관련 기사 제목에 있는 사실만 쓴다. 모르는 건 추측하지 않는다.
 - 말투는 자연스러운 2030 구어체 해요체. 이모지 금지.`;
 
@@ -130,7 +125,6 @@ async function explain(trends: Trend[]): Promise<Trend[]> {
         ...t,
         keyword: t.fromNews && x?.keyword ? x.keyword : t.keyword,
         why: x?.why ?? t.news[0]?.title,
-        talk: x?.talk,
       };
     });
   } catch (e) {
@@ -146,7 +140,7 @@ async function build() {
   return { trends: await explain(filled), updatedAt: new Date().toISOString() };
 }
 
-const cached = unstable_cache(build, ["trends-v6"], { revalidate: 600 });
+const cached = unstable_cache(build, ["trends-v7"], { revalidate: 600 });
 
 export async function GET() {
   try {
