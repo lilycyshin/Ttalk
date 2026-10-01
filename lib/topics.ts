@@ -1,4 +1,6 @@
 // 파이프라인(pipeline-prototype/src/generate.ts)과 같은 스키마. 값을 바꾸면 양쪽을 같이 바꾼다.
+import type { TeamMood } from "./persona";
+
 export const AGE_GROUPS = ["20s", "30s", "40s", "50s_plus"] as const;
 export type AgeGroup = (typeof AGE_GROUPS)[number];
 
@@ -46,7 +48,15 @@ export type Link = { title: string; url: string; source: string };
 export type Daily = { date?: string; topics: Topic[] };
 
 // targetAges: 오늘 같이 먹는 사람들의 연령대(여러 개). 오름차순.
-export type Profile = { myAge: AgeGroup; targetAges: AgeGroup[]; interests: string[] };
+// introversion: 내향 정도(1~4), teamMood: 팀 분위기. 둘은 처음 성향 설정에서 한 번 고른다.
+export type Profile = {
+  myAge: AgeGroup;
+  targetAges: AgeGroup[];
+  interests: string[];
+  nickname?: string; // 불러드릴 이름
+  introversion?: number;
+  teamMood?: TeamMood;
+};
 
 export type Pick = {
   headline: string;

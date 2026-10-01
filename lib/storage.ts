@@ -28,7 +28,7 @@ export function loadProfile(): { profile: Profile; fresh: boolean } | null {
   if (!p?.myAge) return null;
   const targetAges = p.targetAges?.length ? p.targetAges : p.targetAge ? [p.targetAge] : [];
   return {
-    profile: { myAge: p.myAge, targetAges, interests: p.interests ?? [] },
+    profile: { myAge: p.myAge, targetAges, interests: p.interests ?? [], introversion: p.introversion, teamMood: p.teamMood, nickname: p.nickname },
     fresh: p.savedOn === today() && targetAges.length > 0,
   };
 }

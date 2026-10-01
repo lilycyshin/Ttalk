@@ -1,17 +1,11 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { AGE_LABEL, INTERESTS, pickForUser, type Daily, type Profile } from "@/lib/topics";
+import { pickForUser, type Daily, type Profile } from "@/lib/topics";
 import Mascot from "./Mascot";
+import { sceneImage } from "@/lib/persona";
 
-export default function Home({
-  profile,
-  onEditKeywords,
-  onReset,
-}: {
-  profile: Profile;
-  onEditKeywords: () => void;
-  onReset: () => void;
-}) {
+// 뉴스 탭
+export default function Home({ profile, onEditKeywords }: { profile: Profile; onEditKeywords: () => void }) {
   const [daily, setDaily] = useState<Daily | null>(null);
   const [error, setError] = useState(false);
   // "상세 보기"로 펼친 카드들
@@ -31,22 +25,14 @@ export default function Home({
   const date = daily?.date ?? new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Seoul" });
   const picks = useMemo(() => (daily ? pickForUser(daily, profile) : []), [daily, profile]);
   const toggle = (key: string) => setOpen((o) => ({ ...o, [key]: !o[key] }));
-  const keywordLabels = profile.interests.map((id) => INTERESTS.find((i) => i.id === id)?.label ?? id).join(", ");
 
   return (
-    <main className="screen home">
-      <header className="status">
-        <span className="brand">내향인 생존하기</span>
-        <button className="btn small" onClick={onReset}>다시하기</button>
-      </header>
+    <>
 
       <section className="hero">
-        <Mascot say={cheer(daily ? picks.length : null)} />
+        <Mascot say={cheer(daily ? picks.length : null)} src={sceneImage(profile.introversion ?? 2, "news")} />
         <p className="date">{formatDate(date)}</p>
-        <h1 className="title">오늘 점심에 써먹을 얘기</h1>
-        <p className="sub">{profile.targetAges.map((a) => AGE_LABEL[a]).join("·")}랑 식사</p>
         <div className="keywords">
-          <span>키워드: {keywordLabels}</span>
           <button className="btn small" onClick={onEditKeywords}>
             키워드 다시 선택
           </button>
@@ -110,7 +96,7 @@ export default function Home({
           );
         })}
       </ol>
-    </main>
+    </>
   );
 }
 

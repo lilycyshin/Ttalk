@@ -1,5 +1,5 @@
 // 오늘의 토픽 풀을 실시간으로 만든다: 관심사별 뉴스 수집 → (키 있으면) Gemini로 멘트 생성, 없으면 틀 멘트.
-import { GoogleGenAI } from "@google/genai";
+import { geminiClient } from "@/lib/gemini";
 import { INTERESTS, MIN_PICKS, TOTAL_PICKS, type AgeGroup, type Daily, type Topic } from "@/lib/topics";
 import { collect, type InterestId } from "./sources";
 import { generateForInterest } from "./generate";
@@ -23,7 +23,7 @@ export async function buildToday(
   const { cands, errors, source } = await collect(interests);
   if (cands.length === 0) throw new Error(`no news collected: ${errors.slice(0, 3).join(" | ")}`);
 
-  const client = process.env.GEMINI_API_KEY ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY }) : null;
+  const client = geminiClient();
   // 화면엔 전체 TOTAL_PICKS개만 나가므로 관심사당 그 몫에 여유분 2개를 더해 만든다 (연령대 필터·검색 관심도로 골라냄).
   const count = Math.max(MIN_PICKS, Math.ceil(TOTAL_PICKS / interests.length) + 2);
   const perInterest = await Promise.all(
