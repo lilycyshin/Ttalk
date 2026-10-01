@@ -1,19 +1,18 @@
 "use client";
 import Mascot from "./Mascot";
 import Credit from "./Credit";
-import TabIcon from "./TabIcon";
 import { introvertLevel } from "@/lib/persona";
 import type { Profile } from "@/lib/topics";
 
 type Go = (tab: "trends" | "keywords" | "talk") => void;
 
 const ACTIONS: { tab: Parameters<Go>[0]; title: string; desc: string }[] = [
-  { tab: "trends", title: "실시간 트렌드", desc: "스몰톡 거리 찾기" },
-  { tab: "keywords", title: "키워드 주제", desc: "점심 얘깃거리 추천" },
-  { tab: "talk", title: "카톡하는 척", desc: "어색할 땐 폰 보기" },
+  { tab: "trends", title: "실시간 트렌드 보기", desc: "지금 뜨는 얘기로 스몰톡 거리 찾기" },
+  { tab: "keywords", title: "점심 얘깃거리 추천받기", desc: "같이 먹는 분과 관심사에 맞춘 주제" },
+  { tab: "talk", title: "카톡하는 척하기", desc: "어색할 땐 친구랑 대화하는 척" },
 ];
 
-// 홈 탭: 인사와 기능 바로가기 버튼.
+// 홈 탭: 인사와 기능 바로가기 (토스처럼 텍스트만, 위아래로).
 export default function HomeTab({ profile, go }: { profile: Profile; go: Go }) {
   const level = introvertLevel(profile.introversion ?? 0);
 
@@ -26,12 +25,14 @@ export default function HomeTab({ profile, go }: { profile: Profile; go: Go }) {
 
       <div className="home-actions">
         {ACTIONS.map((a) => (
-          <button key={a.tab} className="home-tile" onClick={() => go(a.tab)}>
-            <span className="home-tile-icon">
-              <TabIcon name={a.tab} />
+          <button key={a.tab} className="home-row" onClick={() => go(a.tab)}>
+            <span className="home-row-text">
+              <b>{a.title}</b>
+              <span>{a.desc}</span>
             </span>
-            <b>{a.title}</b>
-            <span>{a.desc}</span>
+            <span className="home-row-arrow" aria-hidden>
+              ›
+            </span>
           </button>
         ))}
       </div>
