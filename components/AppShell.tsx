@@ -1,5 +1,6 @@
 "use client";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { prefetch } from "@/lib/feed";
 import HomeTab from "./HomeTab";
 import Trends from "./Trends";
 import KeywordNews from "./KeywordNews";
@@ -33,6 +34,8 @@ export default function AppShell({
   const [tab, setTab] = useState<TabId>(startTab);
   const [prev, setPrev] = useState<TabId>(startTab);
   const mainRef = useRef<HTMLElement>(null);
+  // 실검·키워드별 데이터를 앱을 열 때 미리 받아 둬서 탭을 눌렀을 때 바로 보이게.
+  useEffect(() => prefetch("/api/trends", "/api/today"), []);
   const go = (id: TabId) => {
     if (id === "talk") setPrev(tab === "talk" ? prev : tab);
     setTab(id);

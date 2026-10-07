@@ -1,22 +1,18 @@
-// 실시간 오늘의 토픽. 앱을 열 때마다 사용자가 고른 관심사만 새로 수집하고 멘트를 만든다. 캐시 없음.
-// GET /api/today?i=baseball,soccer&a=30s,50s_plus  (i: 관심사, a: 같이 먹는 사람 연령대)
-import { AGE_GROUPS, INTERESTS, type AgeGroup } from "@/lib/topics";
+// 오늘의 토픽 공용 풀. 관심사 전체를 서버가 미리 만들어 두고 바로 돌려준다 (관심사·연령대 고르기는 앱에서).
+// 만든 지 50분이 넘으면 지금 가진 걸 먼저 주고 뒤에서 새로 만든다. 1시간마다 GitHub Actions가 불러서 깨운다
+// (.github/workflows/refresh.yml). 배포 직후처럼 아직 만든 게 없을 때만 기다린다.
+import { unstable_cache } from "next/cache";
 import { buildToday } from "@/lib/news/today";
-import type { InterestId } from "@/lib/news/sources";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+// 관심사 전체(Gemini 수십 번)를 만드는 데 1분이 넘을 수 있다.
+export const maxDuration = 300;
 
-const VALID = new Set<string>(INTERESTS.map((i) => i.id));
+const cached = unstable_cache(() => buildToday(), ["today-pool-v1"], { revalidate: 3000 });
 
-export async function GET(req: Request) {
-  const asked = (new URL(req.url).searchParams.get("i") ?? "").split(",").filter((x) => VALID.has(x));
-  const interests = (asked.length ? asked : [...VALID]) as InterestId[];
-  const ages = (new URL(req.url).searchParams.get("a") ?? "")
-    .split(",")
-    .filter((x): x is AgeGroup => (AGE_GROUPS as readonly string[]).includes(x));
+export async function GET() {
   try {
-    return Response.json(await buildToday(interests, ages), { headers: { "Cache-Control": "no-store" } });
+    return Response.json(await cached(), { headers: { "Cache-Control": "no-store" } });
   } catch (e) {
     console.error("today failed:", e);
     // 원인 확인용으로 짧은 이유를 같이 준다 (키 값은 들어가지 않는다).

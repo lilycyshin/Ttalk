@@ -1,6 +1,7 @@
 // 실검: 지금 한국에서 많이 검색되는 키워드 (구글 트렌드 RSS, 키 없음). 항상 10개.
 // 트렌드 피드는 한 번에 10개뿐이라 걸러내고 모자라면 구글 뉴스 연예·스포츠·IT 헤드라인으로 채운다.
-// Gemini가 키워드마다 기사 요약을 붙인다. 화면엔 요약과 출처 기사 1개. 1시간(정시) 단위로 새로 만든다.
+// Gemini가 키워드마다 기사 요약을 붙인다. 화면엔 요약과 출처 기사 1개. 서버가 1시간마다 미리 만들어 두고 바로 돌려준다
+// (만든 지 50분이 넘으면 가진 걸 먼저 주고 뒤에서 새로 만든다. 깨우기는 .github/workflows/refresh.yml).
 // 사건·사고·정치처럼 점심에 꺼내기 곤란한 건 뺀다.
 import { unstable_cache } from "next/cache";
 import { XMLParser } from "fast-xml-parser";
@@ -135,20 +136,20 @@ async function explain(trends: Trend[]): Promise<Trend[]> {
   }
 }
 
-// hour: 한국 시간 기준 "YYYY-MM-DD HH". 정시마다 새로 만든다.
-async function build(_hour: string) {
+// hour: 만든 시각, 한국 시간 "YYYY-MM-DD HH" (앱의 순위 변화 비교와 "N시 업데이트" 표시에 씀).
+const hourKST = () => new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 13).replace("T", " ");
+async function build() {
   const trends = (await fetchTrends()).slice(0, COUNT);
   const taken = new Set(trends.flatMap((t) => t.news.map((n) => n.title.slice(0, 15))));
   const filled = [...trends, ...(await supplement(COUNT - trends.length, taken))];
-  return { trends: await explain(filled), updatedAt: new Date().toISOString() };
+  return { trends: await explain(filled), updatedAt: new Date().toISOString(), hour: hourKST() };
 }
 
-const cached = unstable_cache(build, ["trends-v8"], { revalidate: 3600 });
-const hourKST = () => new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 13).replace("T", " ");
+const cached = unstable_cache(build, ["trends-v9"], { revalidate: 3000 });
 
 export async function GET() {
   try {
-    return Response.json({ ...(await cached(hourKST())), hour: hourKST() });
+    return Response.json(await cached(), { headers: { "Cache-Control": "no-store" } });
   } catch (e) {
     console.error("trends failed:", e);
     return Response.json({ error: "trends unavailable" }, { status: 503 });

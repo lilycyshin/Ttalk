@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useFeed } from "@/lib/feed";
 
 type Trend = {
   keyword: string;
@@ -44,26 +45,16 @@ function compare(hour: string, trends: Trend[]): Record<string, Badge> {
 // 실검 탭: 지금 많이 검색되는 키워드 TOP 10. 1시간마다 바뀐다.
 // 키워드를 누르면 기사 요약과 출처 기사 1개가 펼쳐진다.
 export default function Trends() {
-  const [trends, setTrends] = useState<Trend[] | null>(null);
+  // 앱을 열 때 미리 받아 둔 걸 바로 보여준다 (lib/feed.ts). 서버는 1시간마다 새로 만든다.
+  const { data, error, retry } = useFeed<{ trends: Trend[]; hour: string }>("/api/trends");
+  const trends = data?.trends ?? null;
+  const hour = data?.hour ?? "";
   const [badges, setBadges] = useState<Record<string, Badge>>({});
-  const [hour, setHour] = useState("");
-  const [error, setError] = useState(false);
-  const [attempt, setAttempt] = useState(0);
   const [open, setOpen] = useState<string | null>(null);
 
   useEffect(() => {
-    setError(false);
-    setTrends(null);
-    setOpen(null);
-    fetch("/api/trends")
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((d: { trends: Trend[]; hour: string }) => {
-        setTrends(d.trends);
-        setHour(d.hour);
-        setBadges(compare(d.hour, d.trends));
-      })
-      .catch(() => setError(true));
-  }, [attempt]);
+    if (data) setBadges(compare(data.hour, data.trends));
+  }, [data]);
 
   return (
     <>
@@ -71,10 +62,10 @@ export default function Trends() {
         <h1 className="title">실시간 검색어</h1>
       </section>
 
-      {error && (
+      {error && !trends && (
         <div className="empty">
           <p>검색어를 못 가져왔어요.</p>
-          <button className="btn" onClick={() => setAttempt((n) => n + 1)}>
+          <button className="btn" onClick={retry}>
             다시 시도
           </button>
         </div>

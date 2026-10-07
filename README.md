@@ -18,5 +18,10 @@ npm run build
 
 Vercel: GitHub 저장소 import만 하면 설정 없이 빌드됨.
 
+## 1시간마다 미리 갱신
+`/api/today`(관심사 전체 토픽 풀)와 `/api/trends`(실검)는 서버가 만들어 둔 걸 바로 준다. 만든 지 50분이 지나면 가진 걸 먼저 주고 뒤에서 새로 만든다.
+`.github/workflows/refresh.yml`이 매시 7분과 배포 직후에 두 주소를 불러 깨운다 (Vercel Hobby Cron은 하루 1번이라 GitHub Actions 사용).
+앱은 열 때 두 데이터를 미리 받아 두고(`lib/feed.ts`) 관심사·연령대 고르기는 `pickForUser`로 앱에서 한다.
+
 ## pipeline/
 매일 토픽을 만드는 파이프라인 프로토타입(RSS 수집 → Claude로 토픽·멘트 생성). 앱 빌드와 별개 패키지. 자세한 건 `pipeline/README.md`.

@@ -1,40 +1,17 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useFeed } from "@/lib/feed";
 import { pickForUser, type Daily, type Profile } from "@/lib/topics";
 import Mascot from "./Mascot";
 import { sceneImage } from "@/lib/persona";
 
 // 뉴스 탭
 export default function Home({ profile, onEditKeywords }: { profile: Profile; onEditKeywords: () => void }) {
-  const [daily, setDaily] = useState<Daily | null>(null);
-  const [error, setError] = useState(false);
+  // 서버가 1시간마다 미리 만들어 둔 관심사 전체 풀을 받아서(앱을 열 때 미리 받아 둠) 내 관심사·같이 먹는 사람에 맞게 여기서 고른다.
+  // 키워드를 다시 골라도 새로 받지 않고 바로 바뀐다.
+  const { data: daily, error, retry } = useFeed<Daily & { generatedAt?: string }>("/api/today");
   // "상세 보기"로 펼친 카드들
   const [open, setOpen] = useState<Record<string, boolean>>({});
-
-  // 내 관심사·상대 연령대에 맞는 뉴스를 실시간으로 받는다(/api/today). 실패하면 다시 시도 버튼.
-  // 만드는 데 오래 걸려서, 같은 조건으로 30분 안에 다시 열면 이 탭에서 받아 둔 걸 바로 보여준다 (탭을 닫으면 사라짐).
-  const [attempt, setAttempt] = useState(0);
-  useEffect(() => {
-    const query = `i=${profile.interests.join(",")}&a=${profile.targetAges.join(",")}`;
-    const cacheKey = `smalltalk.today.${query}`;
-    setError(false);
-    if (attempt === 0) {
-      try {
-        const hit = JSON.parse(sessionStorage.getItem(cacheKey) ?? "null");
-        if (hit && Date.now() - hit.at < 30 * 60_000) return setDaily(hit.daily);
-      } catch {}
-    }
-    setDaily(null);
-    fetch(`/api/today?${query}`, { cache: "no-store" })
-      .then((r) => (r.ok ? (r.json() as Promise<Daily>) : Promise.reject()))
-      .then((d) => {
-        setDaily(d);
-        try {
-          sessionStorage.setItem(cacheKey, JSON.stringify({ at: Date.now(), daily: d }));
-        } catch {}
-      })
-      .catch(() => setError(true));
-  }, [profile.interests, profile.targetAges, attempt]);
 
   const date = daily?.date ?? new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Seoul" });
   const picks = useMemo(() => (daily ? pickForUser(daily, profile) : []), [daily, profile]);
@@ -53,15 +30,15 @@ export default function Home({ profile, onEditKeywords }: { profile: Profile; on
         </div>
       </section>
 
-      {error && (
+      {error && !daily && (
         <div className="empty">
           <p>뉴스를 못 가져왔어요.</p>
-          <button className="btn" onClick={() => setAttempt((n) => n + 1)}>
+          <button className="btn" onClick={retry}>
             다시 시도
           </button>
         </div>
       )}
-      {!daily && !error && <p className="empty">실시간 뉴스 가져오는 중…</p>}
+      {!daily && !error && <p className="empty">뉴스 가져오는 중…</p>}
       {daily && picks.length === 0 && (
         <div className="empty">
           <p>{profile.targetAges.length > 1 ? "오늘은 고른 관심사로 다 같이 얘기할 만한 뉴스가 없어요." : "오늘은 고른 관심사에 맞는 뉴스가 없어요."}</p>
@@ -110,9 +87,16 @@ export default function Home({ profile, onEditKeywords }: { profile: Profile; on
           );
         })}
       </ol>
+      {daily?.generatedAt && picks.length > 0 && (
+        <p className="note">{updatedHour(daily.generatedAt)}시 업데이트 · 1시간마다 바뀌어요</p>
+      )}
     </>
   );
 }
+
+// "2026-10-07T03:12:00Z" → "12" (한국 시간)
+const updatedHour = (iso: string) =>
+  String(new Date(iso).toLocaleString("en-US", { timeZone: "Asia/Seoul", hour: "numeric", hourCycle: "h23" }));
 
 // 캐릭터 말풍선: 오늘 챙겨온 토픽 개수에 따라 바뀐다.
 function cheer(count: number | null) {

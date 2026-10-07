@@ -1,11 +1,11 @@
-// 오늘의 토픽 풀을 실시간으로 만든다: 관심사별 뉴스 수집 → (키 있으면) Gemini로 멘트 생성, 없으면 틀 멘트.
+// 공용 토픽 풀을 만든다: 관심사 전체 뉴스 수집 → (키 있으면) Gemini로 멘트 생성, 없으면 틀 멘트.
+// 서버가 1시간마다 미리 만들어 두고(app/api/today), 관심사·연령대 고르기는 앱에서 한다(pickForUser).
 import { geminiClient } from "@/lib/gemini";
-import { INTERESTS, MIN_PICKS, TOTAL_PICKS, type AgeGroup, type Daily, type Topic } from "@/lib/topics";
+import { INTERESTS, MIN_PICKS, type Daily, type Topic } from "@/lib/topics";
 import { collect, isRelevant, type InterestId } from "./sources";
 import { isSameEvent } from "./similar";
 import { generateForInterest } from "./generate";
 import { fallbackTopics, isSmallTalkSafe } from "./fallback";
-import { scoreByAge } from "./trend";
 import { fetchTrends, markHot, type Trend } from "./realtime";
 
 // news: 어디서 가져왔는지와 실패한 검색 이유(최대 3개). 네이버 연결 확인용.
@@ -13,15 +13,13 @@ export type LiveDaily = Daily & {
   generatedAt: string;
   mode: "gemini" | "template";
   news: { source: "naver" | "google"; errors: string[] };
-  trendErrors: string[]; // 데이터랩 실패 이유 (연결 확인용)
   realtime: { count: number; error?: string }; // 구글 트렌드 급상승 검색어 수 (연결 확인용)
 };
 
-// interests: 수집할 관심사. 앱은 사용자가 고른 것만 넘겨서 수집·생성 비용을 줄인다.
-export async function buildToday(
-  interests: InterestId[] = INTERESTS.map((i) => i.id),
-  ages: AgeGroup[] = [],
-): Promise<LiveDaily> {
+// 관심사 하나만 고른 사람도 MIN_PICKS개는 보이게, 관심사마다 그보다 하나 더 만든다.
+const PER_INTEREST = MIN_PICKS + 1;
+
+export async function buildToday(interests: InterestId[] = INTERESTS.map((i) => i.id)): Promise<LiveDaily> {
   const date = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Seoul" });
   // 뉴스와 급상승 검색어를 같이 받는다. 급상승 검색어가 실패해도 뉴스만으로 진행.
   const [{ cands, errors, source }, trendsRes] = await Promise.all([
@@ -35,16 +33,14 @@ export async function buildToday(
   if (cands.length === 0) throw new Error(`no news collected: ${errors.slice(0, 3).join(" | ")}`);
 
   const client = geminiClient();
-  // 화면엔 전체 TOTAL_PICKS개만 나가므로 관심사당 그 몫에 여유분 2개를 더해 만든다 (연령대 필터·검색 관심도로 골라냄).
-  // 관심사 하나만 골라도 MIN_PICKS개는 나오게 한다.
-  const count = Math.max(Math.ceil(MIN_PICKS / interests.length) + 1, Math.ceil(TOTAL_PICKS / interests.length) + 2);
+  const count = PER_INTEREST;
   const perInterest = await Promise.all(
     interests.map(async (id) => {
       const mine = cands.filter((c) => c.interest === id);
       if (mine.length === 0) return [];
       if (!client) return fallbackTopics(mine, count);
       try {
-        const made = await generateForInterest(client, id, mine, date, count, ages);
+        const made = await generateForInterest(client, id, mine, date, count);
         // 모델이 적게 골랐으면 안 쓴 기사로 틀 멘트를 만들어 개수를 채운다.
         if (made.length >= count) return made;
         const used = new Set(made.flatMap((t) => t.source_titles));
@@ -83,9 +79,8 @@ export async function buildToday(
     prev.links = [...(prev.links ?? []), ...(t.links ?? []).filter((l) => !urls.has(l.url))].slice(0, 2);
   }
 
-  // 같이 먹는 사람 연령대가 요즘 각 주제를 얼마나 검색하는지 붙인다 (정렬에 씀).
+  // 네이버 데이터랩 연령대 검색 관심도(lib/news/trend.ts)는 하루 1,000회 한도라 1시간마다 전체 풀에 붙이지 않는다.
   const topics = merged;
-  const trendErrors = ages.length ? await scoreByAge(topics, ages) : [];
   // 급상승 검색어는 토픽 소재로 쓰지 않고, 키워드 기사로 만든 토픽 중 겹치는 걸 위로 올리는 데만 쓴다.
   markHot(topics, trends);
 
@@ -95,7 +90,6 @@ export async function buildToday(
     generatedAt: new Date().toISOString(),
     mode: client ? "gemini" : "template",
     news: { source, errors: errors.slice(0, 3) },
-    trendErrors,
     realtime: { count: trends.length, ...(trendsRes.error ? { error: trendsRes.error } : {}) },
   };
 }

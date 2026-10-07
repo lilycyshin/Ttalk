@@ -16,6 +16,21 @@ export function jsonSchemaOf(schema: z.ZodType) {
   return rest;
 }
 
+// 한꺼번에 보내는 호출 수 제한. 1시간마다 관심사 전체를 만들 때 수십 개가 한 번에 몰리지 않게.
+const MAX_PARALLEL = 6;
+let running = 0;
+const waiting: (() => void)[] = [];
+async function slot<T>(fn: () => Promise<T>): Promise<T> {
+  if (running >= MAX_PARALLEL) await new Promise<void>((r) => waiting.push(r));
+  running++;
+  try {
+    return await fn();
+  } finally {
+    running--;
+    waiting.shift()?.();
+  }
+}
+
 // systemInstruction + 프롬프트로 스키마에 맞는 JSON을 받는다.
 export async function generateJson<T extends z.ZodType>(
   ai: GoogleGenAI,
@@ -23,11 +38,11 @@ export async function generateJson<T extends z.ZodType>(
   system: string,
   contents: string,
 ): Promise<z.infer<T>> {
-  const res = await ai.models.generateContent({
+  const res = await slot(() => ai.models.generateContent({
     model: MODEL,
     contents,
     config: { systemInstruction: system, responseMimeType: "application/json", responseJsonSchema: jsonSchemaOf(schema) },
-  });
+  }));
   if (!res.text) throw new Error(`empty response (${res.candidates?.[0]?.finishReason ?? "unknown"})`);
   const parsed = schema.safeParse(JSON.parse(res.text));
   if (!parsed.success) throw new Error("schema mismatch");
