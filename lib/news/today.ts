@@ -1,5 +1,5 @@
 // 공용 토픽 풀을 만든다: 관심사 전체 뉴스 수집 → (키 있으면) Gemini로 멘트 생성, 없으면 틀 멘트.
-// 서버가 1시간마다 미리 만들어 두고(app/api/today), 관심사·연령대 고르기는 앱에서 한다(pickForUser).
+// 서버가 3시간마다 미리 만들어 두고(app/api/today), 관심사·연령대 고르기는 앱에서 한다(pickForUser).
 import { geminiClient } from "@/lib/gemini";
 import { INTERESTS, MIN_PICKS, type Daily, type Topic } from "@/lib/topics";
 import { collect, isRelevant, type InterestId } from "./sources";
@@ -79,7 +79,7 @@ export async function buildToday(interests: InterestId[] = INTERESTS.map((i) => 
     prev.links = [...(prev.links ?? []), ...(t.links ?? []).filter((l) => !urls.has(l.url))].slice(0, 2);
   }
 
-  // 네이버 데이터랩 연령대 검색 관심도(lib/news/trend.ts)는 하루 1,000회 한도라 1시간마다 전체 풀에 붙이지 않는다.
+  // 네이버 데이터랩 연령대 검색 관심도(lib/news/trend.ts)는 하루 1,000회 한도라 갱신 때마다 전체 풀에 붙이지 않는다.
   const topics = merged;
   // 급상승 검색어는 토픽 소재로 쓰지 않고, 키워드 기사로 만든 토픽 중 겹치는 걸 위로 올리는 데만 쓴다.
   markHot(topics, trends);

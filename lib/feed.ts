@@ -1,5 +1,5 @@
 "use client";
-// 서버가 1시간마다 미리 만들어 두는 데이터(/api/today, /api/trends)를 앱에서 들고 있는다.
+// 서버가 미리 만들어 두는 데이터(/api/today 3시간, /api/trends 1시간)를 앱에서 들고 있는다.
 // 앱을 열 때 한 번 미리 받아 두고(prefetch), 탭을 누르면 받아 둔 걸 바로 보여준다.
 // 받은 지 STALE_MS가 지났으면 화면은 그대로 두고 뒤에서 새로 받아 바꾼다.
 import { useEffect, useState } from "react";

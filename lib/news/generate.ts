@@ -1,4 +1,4 @@
-// 관심사별 후보 기사 → 스몰토크 토픽(연령대별 멘트 포함). 관심사마다 작은 호출을 병렬로 보내 빨리 끝낸다.
+// 관심사별 후보 기사 → 스몰토크 토픽(연령대별 멘트 포함). 관심사마다 호출 1번.
 import type { GoogleGenAI } from "@google/genai";
 import { generateJson } from "@/lib/gemini";
 import { z } from "zod";
@@ -76,8 +76,8 @@ function buildPrompt(
   return `지금은 ${now}. 모든 후보는 최근 24시간 기사다. 관심사 "${label}"(${interest}) 뉴스 후보다. 여기서 스몰토크 토픽을 ${count}개 골라라. 제외 기준에 걸리지 않는 후보가 있으면 반드시 ${count}개를 채운다. 같은 사건은 합치되, 다른 사건은 작은 소식이라도 따로 토픽으로 만든다.${scope}\n\n${lines.join("\n")}`;
 }
 
-// 한 번 부를 때 만들게 하는 토픽 수. 서버가 1시간마다 미리 만들어 두므로 속도보다 호출 수를 줄이는 쪽으로.
-const PER_CALL = 6;
+// 한 번 부를 때 만들게 하는 토픽 수. 관심사당 호출 1번(무료 티어 하루 요청 수 안에 들게). 서버가 미리 만들어 두므로 속도는 덜 중요하다.
+const PER_CALL = 12;
 
 export async function generateForInterest(
   ai: GoogleGenAI,

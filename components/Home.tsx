@@ -7,7 +7,7 @@ import { sceneImage } from "@/lib/persona";
 
 // 뉴스 탭
 export default function Home({ profile, onEditKeywords }: { profile: Profile; onEditKeywords: () => void }) {
-  // 서버가 1시간마다 미리 만들어 둔 관심사 전체 풀을 받아서(앱을 열 때 미리 받아 둠) 내 관심사·같이 먹는 사람에 맞게 여기서 고른다.
+  // 서버가 3시간마다 미리 만들어 둔 관심사 전체 풀을 받아서(앱을 열 때 미리 받아 둠) 내 관심사·같이 먹는 사람에 맞게 여기서 고른다.
   // 키워드를 다시 골라도 새로 받지 않고 바로 바뀐다.
   const { data: daily, error, retry } = useFeed<Daily & { generatedAt?: string }>("/api/today");
   // "상세 보기"로 펼친 카드들
@@ -88,7 +88,7 @@ export default function Home({ profile, onEditKeywords }: { profile: Profile; on
         })}
       </ol>
       {daily?.generatedAt && picks.length > 0 && (
-        <p className="note">{updatedHour(daily.generatedAt)}시 업데이트 · 1시간마다 바뀌어요</p>
+        <p className="note">{updatedHour(daily.generatedAt)}시 업데이트 · 3시간마다 바뀌어요</p>
       )}
     </>
   );

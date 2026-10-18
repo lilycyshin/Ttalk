@@ -16,8 +16,8 @@ export function jsonSchemaOf(schema: z.ZodType) {
   return rest;
 }
 
-// 한꺼번에 보내는 호출 수 제한. 1시간마다 관심사 전체를 만들 때 수십 개가 한 번에 몰리지 않게.
-const MAX_PARALLEL = 6;
+// 한꺼번에 보내는 호출 수 제한. 관심사 전체를 만들 때 몰려서 무료 티어 분당 한도(RPM)에 걸리지 않게.
+const MAX_PARALLEL = 4;
 let running = 0;
 const waiting: (() => void)[] = [];
 async function slot<T>(fn: () => Promise<T>): Promise<T> {
