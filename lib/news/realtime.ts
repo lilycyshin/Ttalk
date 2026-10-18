@@ -1,8 +1,8 @@
 // 구글 트렌드 실시간 급상승 검색어(한국). 키 없이 RSS로 받고, 최근 24시간에 뜬 것만 쓴다.
 // 검색어마다 대략 검색량(approx_traffic)과 관련 기사 1~3개가 붙어 온다. 한 시간 안쪽으로 갱신된다.
-// 고른 키워드와 무관한 게 섞이지 않도록 토픽 소재로는 쓰지 않고 정렬에만 쓴다 (markHot).
+// 고른 키워드와 무관한 게 섞이지 않도록 키워드별 탭 소재로는 쓰지 않고 정렬에만 쓴다 (markHot).
 import { XMLParser } from "fast-xml-parser";
-import type { Topic } from "@/lib/topics";
+import type { KeywordItem } from "@/lib/topics";
 
 export type Trend = {
   keyword: string;
@@ -46,11 +46,11 @@ export async function fetchTrends(): Promise<Trend[]> {
 
 const norm = (s: string) => s.toLowerCase().replace(/\s+/g, "");
 
-// 토픽이 급상승 검색어와 겹치면 그 검색량을 hot에 적는다 (정렬에 씀).
-export function markHot(topics: Topic[], trends: Trend[]) {
-  for (const t of topics) {
-    const text = norm([t.keyword, t.headline, t.summary, ...t.source_titles].join(" "));
-    const titles = new Set(t.source_titles);
+// 키워드가 급상승 검색어와 겹치면 그 검색량을 hot에 적는다 (정렬에 씀).
+export function markHot(items: KeywordItem[], trends: Trend[]) {
+  for (const t of items) {
+    const text = norm([t.keyword, ...t.news.map((n) => n.title)].join(" "));
+    const titles = new Set(t.news.map((n) => n.title));
     const hit = trends.filter(
       (tr) => (norm(tr.keyword).length >= 2 && text.includes(norm(tr.keyword))) || tr.news.some((n) => titles.has(n.title)),
     );

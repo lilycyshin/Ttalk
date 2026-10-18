@@ -20,13 +20,11 @@ type TabId = (typeof TABS)[number]["id"];
 // 가라톡은 전체 화면으로 덮고, 뒤로가기를 누르면 직전 탭으로 돌아간다.
 export default function AppShell({
   profile,
-  fresh,
   onSave,
   onReset,
   startTab = "trends",
 }: {
   profile: Profile;
-  fresh: boolean;
   onSave: (p: Profile) => void;
   onReset: () => void;
   startTab?: TabId;
@@ -55,7 +53,7 @@ export default function AppShell({
         </header>
         {tab === "home" && <HomeTab profile={profile} go={go} />}
         {tab === "trends" && <Trends />}
-        {tab === "keywords" && <KeywordNews profile={profile} fresh={fresh} onSave={onSave} />}
+        {tab === "keywords" && <KeywordNews profile={profile} onSave={onSave} />}
       </main>
 
       <nav className="tabbar" aria-label="메뉴">

@@ -1,20 +1,19 @@
 // 실검: 지금 한국에서 많이 검색되는 키워드 (구글 트렌드 RSS, 키 없음). 항상 10개.
 // 트렌드 피드는 한 번에 10개뿐이라 걸러내고 모자라면 구글 뉴스 연예·스포츠·IT 헤드라인으로 채운다.
-// Gemini가 키워드마다 기사 요약을 붙인다. 화면엔 요약과 출처 기사 1개. 서버가 1시간마다 미리 만들어 두고 바로 돌려준다
+// 화면엔 키워드, 누르면 관련 기사 제목. AI는 쓰지 않는다. 서버가 1시간마다 미리 만들어 두고 바로 돌려준다
 // (만든 지 50분이 넘으면 가진 걸 먼저 주고 뒤에서 새로 만든다. 깨우기는 .github/workflows/refresh.yml).
 // 사건·사고·정치처럼 점심에 꺼내기 곤란한 건 뺀다.
 import { unstable_cache } from "next/cache";
 import { XMLParser } from "fast-xml-parser";
-import { z } from "zod";
-import { isAwkwardTitle } from "@/lib/news/fallback";
-import { generateJson, geminiClient } from "@/lib/gemini";
+import { isAwkwardTitle } from "@/lib/news/filter";
+import { keywordOf } from "@/lib/news/keyword";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+export const maxDuration = 30;
 
 type News = { title: string; url: string; source: string };
 // startedAt: 구글 트렌드에 오른 시각 (NEW 표시용)
-export type Trend = { keyword: string; why?: string; news: News[]; fromNews?: boolean; startedAt?: string };
+export type Trend = { keyword: string; news: News[]; fromNews?: boolean; startedAt?: string };
 
 const COUNT = 10;
 const UA = { "User-Agent": "Mozilla/5.0 (compatible; lunchtalk/0.1)" };
@@ -55,18 +54,13 @@ async function fetchTrends(): Promise<Trend[]> {
     .map((t) => ({ ...t, news: t.news.filter((n) => isKorean(n.title)) }))
     .filter((t) => t.news.length > 0 && !isAwkwardTitle(t.keyword) && !t.news.some((n) => isAwkwardTitle(n.title)))
     .sort((a, b) => b.n - a.n)
-    .map(({ keyword, news, startedAt }) => ({ keyword, startedAt, news: news.slice(0, 2) }));
+    .map(({ keyword, news, startedAt }) => ({ keyword, startedAt, news: news.slice(0, 3) }));
 }
 
 // 채우기용: 구글 뉴스 섹션 헤드라인을 연예·스포츠·IT 순서로 번갈아 뽑는다.
 const SECTIONS = ["ENTERTAINMENT", "SPORTS", "TECHNOLOGY"];
-// 기사 제목에서 짧은 키워드 (Gemini가 없을 때): 쉼표·말줄임표 앞, 최대 14자
-function shortKeyword(title: string) {
-  const head = title.split(/[,…·]|\.\.\./)[0].replace(/["'‘’“”]/g, "").trim();
-  return head.length > 14 ? `${head.slice(0, 14).trim()}…` : head;
-}
-
-async function supplement(n: number, taken: Set<string>): Promise<Trend[]> {
+// taken: 이미 쓴 기사(앞 15자), keywords: 이미 쓴 키워드
+async function supplement(n: number, taken: Set<string>, keywords: Set<string>): Promise<Trend[]> {
   if (n <= 0) return [];
   const feeds = await Promise.allSettled(
     SECTIONS.map((sec) => rss(`https://news.google.com/rss/headlines/section/topic/${sec}?hl=ko&gl=KR&ceid=KR:ko`)),
@@ -88,52 +82,9 @@ async function supplement(n: number, taken: Set<string>): Promise<Trend[]> {
       const x = l[i];
       if (!x || out.length >= n || taken.has(x.title.slice(0, 15))) continue;
       taken.add(x.title.slice(0, 15));
-      out.push({ keyword: shortKeyword(x.title), news: [x], fromNews: true });
+      out.push({ keyword: keywordOf([x.title], keywords), news: [x], fromNews: true });
     }
   return out;
-}
-
-const Explain = z.object({
-  items: z.array(
-    z.object({
-      index: z.number().describe("입력 번호"),
-      keyword: z.string().describe("검색어 항목은 그대로. (뉴스) 항목은 기사 제목을 보고 2~12자 짧은 주제 이름"),
-      why: z.string().describe("기사 요약. 무슨 일인지 2~3문장. 관련 기사 제목에 있는 사실만 쓰고 지어내지 않는다"),
-    }),
-  ),
-});
-
-const EXPLAIN_SYSTEM = `너는 회사 점심 자리에서 쓸 스몰토크를 도와주는 편집자다.
-지금 많이 검색되는 키워드(또는 화제 기사)와 관련 기사 제목이 주어진다. 항목마다 무슨 일인지 짧게 요약한다.
-- 설명은 관련 기사 제목에 있는 사실만 쓴다. 모르는 건 추측하지 않는다.
-- 말투는 자연스러운 2030 구어체 해요체. 이모지 금지.`;
-
-// Gemini로 설명 붙이기. 키가 없거나 실패하면 첫 기사 제목을 설명으로 쓴다.
-async function explain(trends: Trend[]): Promise<Trend[]> {
-  const fallback = trends.map((t) => ({ ...t, why: t.news[0]?.title }));
-  const ai = geminiClient();
-  if (!ai) return fallback;
-  try {
-    const prompt = trends
-      .map((t, i) => {
-        const head = `${i + 1}. ${t.fromNews ? "(뉴스) " : ""}${t.keyword}`;
-        return [head, ...t.news.map((n) => `   - ${n.title}`)].join("\n");
-      })
-      .join("\n");
-    const { items } = await generateJson(ai, Explain, EXPLAIN_SYSTEM, prompt);
-    const byIndex = new Map(items.map((x) => [x.index, x]));
-    return trends.map((t, i) => {
-      const x = byIndex.get(i + 1);
-      return {
-        ...t,
-        keyword: t.fromNews && x?.keyword ? x.keyword : t.keyword,
-        why: x?.why ?? t.news[0]?.title,
-      };
-    });
-  } catch (e) {
-    console.error("trends explain failed:", e);
-    return fallback;
-  }
 }
 
 // hour: 만든 시각, 한국 시간 "YYYY-MM-DD HH" (앱의 순위 변화 비교와 "N시 업데이트" 표시에 씀).
@@ -141,11 +92,12 @@ const hourKST = () => new Date(Date.now() + 9 * 3600_000).toISOString().slice(0,
 async function build() {
   const trends = (await fetchTrends()).slice(0, COUNT);
   const taken = new Set(trends.flatMap((t) => t.news.map((n) => n.title.slice(0, 15))));
-  const filled = [...trends, ...(await supplement(COUNT - trends.length, taken))];
-  return { trends: await explain(filled), updatedAt: new Date().toISOString(), hour: hourKST() };
+  const keywords = new Set(trends.map((t) => t.keyword.replace(/\s+/g, "")));
+  const filled = [...trends, ...(await supplement(COUNT - trends.length, taken, keywords))];
+  return { trends: filled, updatedAt: new Date().toISOString(), hour: hourKST() };
 }
 
-const cached = unstable_cache(build, ["trends-v9"], { revalidate: 3000 });
+const cached = unstable_cache(build, ["trends-v10"], { revalidate: 3000 });
 
 export async function GET() {
   try {

@@ -6,7 +6,7 @@ type Msg = { from: "me" | "friend"; text: string };
 // 남이 봐도 대화 중간처럼 보이게 시작한다.
 const FIRST: Msg = { from: "friend", text: "그니까 ㅋㅋㅋ대박임" };
 
-// 가라톡: 점심 자리에서 카톡하는 척할 수 있는 전체 화면 메신저. 상대 "정대호"는 Gemini가 친구처럼 답한다.
+// 가라톡: 점심 자리에서 카톡하는 척할 수 있는 전체 화면 메신저. 상대 "정대호"는 미리 써 둔 답장 중에서 친구처럼 답한다 (app/api/chat).
 // 뒤로가기 버튼으로만 나간다. 대화는 저장하지 않아서 나갔다 들어오면 처음부터.
 export default function GaraTalk({ onBack }: { onBack: () => void }) {
   const [msgs, setMsgs] = useState<Msg[]>([FIRST]);
@@ -69,6 +69,8 @@ export default function GaraTalk({ onBack }: { onBack: () => void }) {
         body: JSON.stringify({ messages: next }),
       });
       const d = await r.json();
+      // 답장이 너무 빨리 오면 티 나니까 타이핑하는 척 잠깐 기다린다.
+      await new Promise((ok) => setTimeout(ok, 700 + Math.random() * 900));
       setMsgs((m) => [...m, { from: "friend", text: d.reply ?? "앗 잠깐 렉 걸림 ㅋㅋ" }]);
     } catch {
       setMsgs((m) => [...m, { from: "friend", text: "앗 잠깐 렉 걸림 ㅋㅋ 다시 보내줘" }]);

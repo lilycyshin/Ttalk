@@ -1,10 +1,10 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useFeed } from "@/lib/feed";
+import KeywordList from "./KeywordList";
 
 type Trend = {
   keyword: string;
-  why?: string;
   startedAt?: string;
   news: { title: string; url: string; source: string }[];
 };
@@ -43,14 +43,13 @@ function compare(hour: string, trends: Trend[]): Record<string, Badge> {
 }
 
 // 실검 탭: 지금 많이 검색되는 키워드 TOP 10. 1시간마다 바뀐다.
-// 키워드를 누르면 기사 요약과 출처 기사 1개가 펼쳐진다.
+// 키워드를 누르면 관련 기사 제목이 펼쳐진다.
 export default function Trends() {
   // 앱을 열 때 미리 받아 둔 걸 바로 보여준다 (lib/feed.ts). 서버는 1시간마다 새로 만든다.
   const { data, error, retry } = useFeed<{ trends: Trend[]; hour: string }>("/api/trends");
   const trends = data?.trends ?? null;
   const hour = data?.hour ?? "";
   const [badges, setBadges] = useState<Record<string, Badge>>({});
-  const [open, setOpen] = useState<string | null>(null);
 
   useEffect(() => {
     if (data) setBadges(compare(data.hour, data.trends));
@@ -72,37 +71,7 @@ export default function Trends() {
       )}
       {!trends && !error && <p className="empty">검색어 모으는 중…</p>}
 
-      {trends && (
-        <ol className="trends">
-          {trends.map((t, i) => {
-            const expanded = open === t.keyword;
-            const source = t.news[0];
-            const badge = badges[t.keyword];
-            return (
-              <li key={t.keyword} className="trend">
-                <button className="trend-row" onClick={() => setOpen(expanded ? null : t.keyword)} aria-expanded={expanded}>
-                  <span className="rank">{i + 1}</span>
-                  <span className="trend-body">
-                    <span className="trend-head">
-                      <b>{t.keyword}</b>
-                      {badge && <span className={`trend-badge ${badge.kind}`}>{badge.text}</span>}
-                    </span>
-                    {t.why && <span className={expanded ? "trend-why full" : "trend-why"}>{t.why}</span>}
-                  </span>
-                </button>
-                {expanded && source && (
-                  <div className="trend-more">
-                    <a className="trend-source" href={source.url} target="_blank" rel="noopener noreferrer">
-                      {source.title}
-                      {source.source && <span> · {source.source}</span>}
-                    </a>
-                  </div>
-                )}
-              </li>
-            );
-          })}
-        </ol>
-      )}
+      {trends && <KeywordList items={trends.map((t) => ({ ...t, badge: badges[t.keyword] }))} />}
       <p className="note">구글 트렌드 기준 · {hour ? `${hour.slice(11)}시 업데이트 · ` : ""}1시간마다 바뀌어요</p>
     </>
   );

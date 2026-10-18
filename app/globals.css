@@ -100,25 +100,10 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .empty p { margin: 12px 0; }
 .brand { font-size: 17px; font-weight: 700; letter-spacing: -0.02em; }
 
-.cards { list-style: none; padding: 0; margin: 8px 0 0; display: flex; flex-direction: column; gap: 12px; }
-.card {
-  background: var(--panel); border: 1px solid var(--line); border-radius: 18px;
-  padding: 18px 16px 16px; transition: background 0.2s;
-}
-.card-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; min-width: 0; }
 .tag {
   flex: none; background: var(--soft); color: var(--muted);
   border-radius: 6px; padding: 3px 7px; font-size: 12px; font-weight: 600;
 }
-.card-title { font-weight: 600; color: var(--muted); font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.opener { font-size: 19px; font-weight: 700; line-height: 1.5; margin: 0 0 14px; letter-spacing: -0.02em; }
-.more { border-top: 1px solid var(--line); padding-top: 12px; margin-bottom: 14px; font-size: 15px; line-height: 1.55; }
-.more p { margin: 0 0 6px; }
-.summary { color: var(--ink); font-size: 14px; }
-.background { color: var(--muted); font-size: 13px; }
-.links { list-style: none; padding: 0; margin: 8px 0 0; font-size: 12px; color: var(--muted); }
-.links li { margin-top: 4px; }
-.links a { color: var(--point); text-decoration: none; }
 .btn.wide-sm { width: 100%; padding: 10px 0; font-size: 14px; }
 
 /* 캐릭터 */
@@ -171,13 +156,11 @@ button { font: inherit; color: inherit; cursor: pointer; }
 /* 실검 탭 */
 .trends { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
 .trend { border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
-.trend-row { width: 100%; display: flex; gap: 12px; align-items: flex-start; text-align: left; background: none; border: 0; padding: 12px 14px; }
+.trend-row { width: 100%; display: flex; gap: 12px; align-items: center; text-align: left; background: none; border: 0; padding: 12px 14px; }
 .rank { flex: none; width: 22px; font-weight: 700; color: var(--point); font-size: 16px; text-align: center; }
 .trend-body { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 3px; }
 .trend-body b { font-size: 16px; }
-.trend-why { font-size: 13px; color: var(--muted); line-height: 1.45; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.trend-why.full { white-space: normal; color: var(--ink); }
-.trend-more { padding: 0 14px 12px 48px; }
+.trend-more { list-style: none; margin: 0; padding: 0 14px 12px 48px; display: flex; flex-direction: column; gap: 6px; }
 .trend-source { display: block; font-size: 12px; line-height: 1.45; color: var(--point); text-decoration: none; }
 .trend-source span { color: var(--muted); }
 .note { text-align: center; color: var(--muted); font-size: 12px; margin-top: 16px; }

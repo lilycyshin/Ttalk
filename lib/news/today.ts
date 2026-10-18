@@ -1,23 +1,22 @@
-// 공용 토픽 풀을 만든다: 관심사 전체 뉴스 수집 → (키 있으면) Gemini로 멘트 생성, 없으면 틀 멘트.
-// 서버가 3시간마다 미리 만들어 두고(app/api/today), 관심사·연령대 고르기는 앱에서 한다(pickForUser).
-import { geminiClient } from "@/lib/gemini";
-import { INTERESTS, MIN_PICKS, type Daily, type Topic } from "@/lib/topics";
-import { collect, isRelevant, type InterestId } from "./sources";
-import { isSameEvent } from "./similar";
-import { generateForInterest } from "./generate";
-import { fallbackTopics, isSmallTalkSafe } from "./fallback";
+// 키워드별 탭 공용 풀을 만든다: 관심사 전체 뉴스 수집 → 같은 사건 기사끼리 묶기 → 묶음마다 제목에서 키워드 뽑기. AI는 쓰지 않는다.
+// 서버가 미리 만들어 두고(app/api/today), 관심사 고르기는 앱에서 한다(pickKeywords).
+import { INTERESTS, type KeywordItem, type KeywordPool } from "@/lib/topics";
+import { collect, type InterestId } from "./sources";
+import { cluster, isSameEvent } from "./similar";
+import { isSmallTalkSafe } from "./filter";
+import { keywordOf } from "./keyword";
 import { fetchTrends, markHot, type Trend } from "./realtime";
 
 // news: 어디서 가져왔는지와 실패한 검색 이유(최대 3개). 네이버 연결 확인용.
-export type LiveDaily = Daily & {
+export type LiveDaily = KeywordPool & {
   generatedAt: string;
-  mode: "gemini" | "template";
   news: { source: "naver" | "google"; errors: string[] };
   realtime: { count: number; error?: string }; // 구글 트렌드 급상승 검색어 수 (연결 확인용)
 };
 
-// 관심사 하나만 고른 사람도 MIN_PICKS개는 보이게, 관심사마다 그보다 하나 더 만든다.
-const PER_INTEREST = MIN_PICKS + 1;
+// 관심사마다 만드는 키워드 수, 키워드마다 보여줄 기사 수
+const PER_INTEREST = 8;
+const NEWS_PER_ITEM = 3;
 
 export async function buildToday(interests: InterestId[] = INTERESTS.map((i) => i.id)): Promise<LiveDaily> {
   const date = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Seoul" });
@@ -29,75 +28,45 @@ export async function buildToday(interests: InterestId[] = INTERESTS.map((i) => 
       (e) => ({ trends: [] as Trend[], error: String(e?.message ?? e) }),
     ),
   ]);
-  const { trends } = trendsRes;
   if (cands.length === 0) throw new Error(`no news collected: ${errors.slice(0, 3).join(" | ")}`);
 
-  const client = geminiClient();
-  const count = PER_INTEREST;
-  const perInterest = await Promise.all(
-    interests.map(async (id) => {
-      const mine = cands.filter((c) => c.interest === id);
-      if (mine.length === 0) return [];
-      if (!client) return fallbackTopics(mine, count);
-      try {
-        const made = await generateForInterest(client, id, mine, date, count);
-        // 모델이 적게 골랐으면 안 쓴 기사로 틀 멘트를 만들어 개수를 채운다.
-        if (made.length >= count) return made;
-        const used = new Set(made.flatMap((t) => t.source_titles));
-        return [...made, ...fallbackTopics(mine.filter((c) => !used.has(c.title)), count - made.length)];
-      } catch (e) {
-        // 한 관심사가 실패해도 나머지는 살린다. 이 관심사만 틀 멘트로.
-        console.warn("generate failed:", id, e);
-        return fallbackTopics(mine.filter(isSmallTalkSafe), count);
+  const items: KeywordItem[] = [];
+  const norm = (s: string) => s.replace(/\s+/g, "").toLowerCase();
+  for (const id of interests) {
+    const mine = cands.filter((c) => c.interest === id && c.url && isSmallTalkSafe(c));
+    // 같은 사건 기사가 많은 묶음부터 (많이 다뤄진 소식)
+    const groups = cluster(mine, (c) => c.title)
+      .map((g, i) => ({ g, i }))
+      .sort((a, b) => b.g.length - a.g.length || a.i - b.i)
+      .slice(0, PER_INTEREST)
+      .map(({ g }) => g);
+    for (const g of groups) {
+      const news = g.slice(0, NEWS_PER_ITEM).map((c) => ({ title: c.title, url: c.url!, source: c.source }));
+      const keyword = keywordOf(g.map((c) => c.title));
+      // 키워드가 같거나(같은 사람·같은 주제 다른 기사) 다른 관심사에서 이미 나온 같은 사건이면 관심사 태그와 기사만 더한다.
+      const prev = items.find(
+        (it) =>
+          norm(it.keyword) === norm(keyword) ||
+          it.news.some((n) => g.some((c) => n.title === c.title || isSameEvent(n.title, c.title))),
+      );
+      if (prev) {
+        if (!prev.interests.includes(id)) prev.interests.push(id);
+        const urls = new Set(prev.news.map((n) => n.url));
+        prev.news = [...prev.news, ...news.filter((n) => !urls.has(n.url))].slice(0, NEWS_PER_ITEM);
+        prev.size += g.length;
+        continue;
       }
-    }),
-  );
-
-  // 근거 기사 제목으로 원문 링크를 붙인다 (최대 2개).
-  const linkOf = (title: string) => {
-    const c = cands.find((c) => c.title === title || c.title.startsWith(title.slice(0, 15)));
-    return c?.url ? { title: c.title, url: c.url, source: c.source } : null;
-  };
-  for (const t of perInterest.flat())
-    t.links = t.source_titles.map(linkOf).filter((l): l is NonNullable<typeof l> => !!l).slice(0, 2);
-
-  // 같은 사건 토픽은 하나로 합치고 태그·링크를 모은다. 관심사끼리, 생성 묶음끼리 겹치는 걸 여기서 거른다.
-  // 같은 사건: 검색 키워드가 같거나, 카드 제목이 비슷하거나, 근거 기사 제목이 비슷하면.
-  const merged: Topic[] = [];
-  for (const t of perInterest.flat()) {
-    // AI·IT처럼 범위가 좁은 관심사 태그는 내용이 실제로 맞을 때만 단다. 태그가 다 빠지면 버린다.
-    const text = [t.headline, t.summary, t.keyword ?? "", ...t.source_titles].join(" ");
-    t.interests = t.interests.filter((i) => isRelevant(i as InterestId, text));
-    if (t.interests.length === 0) continue;
-    const prev = merged.find((m) => sameTopic(m, t));
-    if (!prev) {
-      merged.push(t);
-      continue;
+      items.push({ keyword, interests: [id], news, size: g.length });
     }
-    prev.interests = [...new Set([...prev.interests, ...t.interests])];
-    const urls = new Set((prev.links ?? []).map((l) => l.url));
-    prev.links = [...(prev.links ?? []), ...(t.links ?? []).filter((l) => !urls.has(l.url))].slice(0, 2);
   }
-
-  // 네이버 데이터랩 연령대 검색 관심도(lib/news/trend.ts)는 하루 1,000회 한도라 갱신 때마다 전체 풀에 붙이지 않는다.
-  const topics = merged;
-  // 급상승 검색어는 토픽 소재로 쓰지 않고, 키워드 기사로 만든 토픽 중 겹치는 걸 위로 올리는 데만 쓴다.
-  markHot(topics, trends);
+  // 지금 급상승 검색어와 겹치는 키워드를 위로 올린다.
+  markHot(items, trendsRes.trends);
 
   return {
     date,
-    topics,
+    items,
     generatedAt: new Date().toISOString(),
-    mode: client ? "gemini" : "template",
     news: { source, errors: errors.slice(0, 3) },
-    realtime: { count: trends.length, ...(trendsRes.error ? { error: trendsRes.error } : {}) },
+    realtime: { count: trendsRes.trends.length, ...(trendsRes.error ? { error: trendsRes.error } : {}) },
   };
-}
-
-const normKey = (s?: string) => (s ?? "").toLowerCase().replace(/\s+/g, "");
-function sameTopic(a: Topic, b: Topic) {
-  const ka = normKey(a.keyword);
-  if (ka.length >= 2 && ka === normKey(b.keyword)) return true;
-  if (isSameEvent(a.headline, b.headline)) return true;
-  return a.source_titles.some((x) => b.source_titles.some((y) => x === y || isSameEvent(x, y)));
 }

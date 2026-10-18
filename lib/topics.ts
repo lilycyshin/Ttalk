@@ -1,4 +1,4 @@
-// 파이프라인(pipeline-prototype/src/generate.ts)과 같은 스키마. 값을 바꾸면 양쪽을 같이 바꾼다.
+// 관심사·연령대 목록과 키워드별 탭 데이터 모양.
 import type { TeamMood } from "./persona";
 
 export const AGE_GROUPS = ["20s", "30s", "40s", "50s_plus"] as const;
@@ -31,22 +31,11 @@ export const INTERESTS = [
   { id: "games", label: "게임" },
 ] as const;
 
-type Opener = { opener: string; follow_up: string };
-export type Topic = {
-  headline: string;
-  summary: string;
-  interests: string[];
-  age_fit: AgeGroup[];
-  source_titles: string[];
-  openers: Record<AgeGroup, Opener>;
-  background?: string; // 잘 모르는 사람을 위한 배경 설명
-  links?: Link[]; // 원문 기사
-  keyword?: string; // 네이버 검색용 핵심 검색어
-  trend?: number; // 같이 먹는 사람 연령대의 최근 7일 검색 관심도 (기준 키워드 대비 배수)
-  hot?: number; // 최근 24시간 구글 트렌드 급상승 검색량 (겹치는 검색어가 있을 때만)
-};
 export type Link = { title: string; url: string; source: string };
-export type Daily = { date?: string; topics: Topic[] };
+// 키워드별 탭 항목: 같은 사건 기사 묶음 하나. 화면엔 키워드만, 누르면 기사 제목(news).
+// size: 묶인 기사 수 (많이 다뤄질수록 위로), hot: 겹치는 구글 트렌드 급상승 검색어의 검색량
+export type KeywordItem = { keyword: string; interests: string[]; news: Link[]; size: number; hot?: number };
+export type KeywordPool = { date?: string; items: KeywordItem[] };
 
 // targetAges: 오늘 같이 먹는 사람들의 연령대(여러 개). 오름차순.
 // introversion: 내향 정도(1~4), teamMood: 팀 분위기. 둘은 처음 성향 설정에서 한 번 고른다.
@@ -59,58 +48,33 @@ export type Profile = {
   teamMood?: TeamMood;
 };
 
-export type Pick = {
-  headline: string;
-  summary: string;
-  opener: string;
-  follow_up: string;
-  tag: string;
-  background?: string;
-  links: Link[];
-};
+export type KeywordPick = KeywordItem & { tag: string };
 
-// 한 화면에 보여줄 토픽 수 (관심사 전체 합쳐서). 최대 TOTAL_PICKS개.
-// 연령대 조건에 맞는 게 MIN_PICKS개보다 적으면 조건을 풀어서 MIN_PICKS개까지 채운다.
+// 한 화면에 보여줄 키워드 수 (관심사 전체 합쳐서)
 export const TOTAL_PICKS = 15;
-export const MIN_PICKS = 10;
 
-// 고른 관심사가 하나라도 겹치고, 같이 먹는 모든 연령대에 맞는 토픽을 우선 보여준다. 관심사가 많이 겹칠수록 위로.
-// 멘트는 같이 먹는 사람 중 가장 윗사람 말투로. 그 말투면 다른 분들한테도 무난하다.
-export function pickForUser(daily: Daily, p: Profile): Pick[] {
-  const speakTo = p.targetAges[p.targetAges.length - 1];
-  const score = (t: Topic) => t.interests.filter((i) => p.interests.includes(i)).length;
-  // 관심사가 많이 겹칠수록, 같은 수면 지금 급상승 검색어인 주제, 그다음 그 연령대가 요즘 많이 검색하는 주제일수록 위로.
-  const byScore = (a: Topic, b: Topic) =>
-    score(b) - score(a) || (b.hot ?? 0) - (a.hot ?? 0) || (b.trend ?? 0) - (a.trend ?? 0);
-  const mine = daily.topics.filter((t) => t.interests.some((i) => p.interests.includes(i)));
-  const fitsAll = (t: Topic) => p.targetAges.every((a) => t.age_fit.includes(a));
-  let chosen = mine.filter(fitsAll);
-  if (chosen.length < MIN_PICKS) chosen = [...chosen, ...mine.filter((t) => !fitsAll(t)).slice(0, MIN_PICKS - chosen.length)];
-  const picks = chosen
-    .sort(byScore)
-    .map((t) => ({
-      headline: t.headline,
-      summary: t.summary,
-      ...t.openers[speakTo],
-      tag: topicTag(t, p.interests),
-      background: t.background,
-      links: t.links ?? [],
-    }));
+// 고른 관심사가 하나라도 겹치는 키워드만. 관심사가 많이 겹칠수록, 같으면 급상승 검색어, 그다음 기사가 많은 순.
+export function pickKeywords(pool: KeywordPool, p: Profile): KeywordPick[] {
+  const score = (t: KeywordItem) => t.interests.filter((i) => p.interests.includes(i)).length;
+  const picks = (pool.items ?? [])
+    .filter((t) => score(t) > 0)
+    .sort((a, b) => score(b) - score(a) || (b.hot ?? 0) - (a.hot ?? 0) || b.size - a.size)
+    .map((t) => ({ ...t, tag: topicTag(t, p.interests) }));
   return roundRobin(picks).slice(0, TOTAL_PICKS);
 }
 
 // 관심사(태그)별로 번갈아 뽑아서 한 관심사가 다 차지하지 않게 한다.
-function roundRobin(picks: Pick[]): Pick[] {
-  const groups = new Map<string, Pick[]>();
+function roundRobin(picks: KeywordPick[]): KeywordPick[] {
+  const groups = new Map<string, KeywordPick[]>();
   for (const p of picks) groups.set(p.tag, [...(groups.get(p.tag) ?? []), p]);
-  const out: Pick[] = [];
+  const out: KeywordPick[] = [];
   for (let i = 0; out.length < picks.length; i++)
     for (const g of groups.values()) if (g[i]) out.push(g[i]);
   return out;
 }
 
-// 카드 태그: 토픽과 겹치는 내 관심사 중 가장 구체적인(마지막) 것.
-function topicTag(t: Topic, mine: string[]) {
+// 태그: 겹치는 내 관심사 중 가장 구체적인(마지막) 것.
+function topicTag(t: KeywordItem, mine: string[]) {
   const id = [...t.interests].reverse().find((i) => mine.includes(i));
   return INTERESTS.find((i) => i.id === id)?.label ?? "스몰토크";
 }
