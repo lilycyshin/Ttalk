@@ -34,7 +34,15 @@ export const INTERESTS = [
 export type Link = { title: string; url: string; source: string };
 // 키워드별 탭 항목: 같은 사건 기사 묶음 하나. 화면엔 키워드만, 누르면 기사 제목(news).
 // size: 묶인 기사 수 (많이 다뤄질수록 위로), hot: 겹치는 구글 트렌드 급상승 검색어의 검색량
-export type KeywordItem = { keyword: string; interests: string[]; news: Link[]; size: number; hot?: number };
+// ages: 연령대별 최근 7일 네이버 검색 관심도 (기준 키워드 대비 배수, 네이버 키가 있을 때만)
+export type KeywordItem = {
+  keyword: string;
+  interests: string[];
+  news: Link[];
+  size: number;
+  hot?: number;
+  ages?: Partial<Record<AgeGroup, number>>;
+};
 export type KeywordPool = { date?: string; items: KeywordItem[] };
 
 // targetAges: 오늘 같이 먹는 사람들의 연령대(여러 개). 오름차순.
@@ -53,12 +61,18 @@ export type KeywordPick = KeywordItem & { tag: string };
 // 한 화면에 보여줄 키워드 수 (관심사 전체 합쳐서)
 export const TOTAL_PICKS = 15;
 
-// 고른 관심사가 하나라도 겹치는 키워드만. 관심사가 많이 겹칠수록, 같으면 급상승 검색어, 그다음 기사가 많은 순.
+// 같이 먹는 사람 연령대들이 이 키워드를 요즘 얼마나 검색하는지 (연령대 평균)
+export const ageScore = (t: KeywordItem, ages: AgeGroup[]) =>
+  ages.length ? ages.reduce((s, a) => s + (t.ages?.[a] ?? 0), 0) / ages.length : 0;
+
+// 고른 관심사가 하나라도 겹치는 키워드만. 관심사가 많이 겹칠수록, 같으면 같이 먹는 사람 연령대가 많이 검색하는 순,
+// 그다음 급상승 검색어, 기사가 많은 순.
 export function pickKeywords(pool: KeywordPool, p: Profile): KeywordPick[] {
   const score = (t: KeywordItem) => t.interests.filter((i) => p.interests.includes(i)).length;
+  const age = (t: KeywordItem) => ageScore(t, p.targetAges);
   const picks = (pool.items ?? [])
     .filter((t) => score(t) > 0)
-    .sort((a, b) => score(b) - score(a) || (b.hot ?? 0) - (a.hot ?? 0) || b.size - a.size)
+    .sort((a, b) => score(b) - score(a) || age(b) - age(a) || (b.hot ?? 0) - (a.hot ?? 0) || b.size - a.size)
     .map((t) => ({ ...t, tag: topicTag(t, p.interests) }));
   return roundRobin(picks).slice(0, TOTAL_PICKS);
 }

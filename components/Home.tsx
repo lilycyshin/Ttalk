@@ -1,12 +1,12 @@
 "use client";
 import { useMemo } from "react";
 import { useFeed } from "@/lib/feed";
-import { pickKeywords, type KeywordPool, type Profile } from "@/lib/topics";
+import { AGE_LABEL, pickKeywords, type KeywordPool, type Profile } from "@/lib/topics";
 import Mascot from "./Mascot";
 import KeywordList from "./KeywordList";
 import { sceneImage } from "@/lib/persona";
 
-// 키워드별 탭: 실검처럼 키워드 목록, 누르면 기사 제목.
+// 키워드별 탭: 실검처럼 키워드 목록, 누르면 기사 제목. 같이 먹는 사람 연령대가 네이버에서 많이 검색하는 순.
 export default function Home({ profile, onEditKeywords }: { profile: Profile; onEditKeywords: () => void }) {
   // 서버가 1시간마다 미리 만들어 둔 관심사 전체 풀을 받아서(앱을 열 때 미리 받아 둠) 내 관심사에 맞게 여기서 고른다.
   // 키워드를 다시 골라도 새로 받지 않고 바로 바뀐다.
@@ -16,6 +16,9 @@ export default function Home({ profile, onEditKeywords }: { profile: Profile; on
 
   const date = pool?.date ?? new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Seoul" });
   const picks = useMemo(() => (pool ? pickKeywords(pool, profile) : []), [pool, profile]);
+  // 연령대 점수가 붙어 있을 때만 "OO대가 많이 검색하는 순" 안내
+  const byAge = picks.some((p) => p.ages);
+  const who = profile.targetAges.map((a) => AGE_LABEL[a]).join("·");
 
   return (
     <>
@@ -49,7 +52,10 @@ export default function Home({ profile, onEditKeywords }: { profile: Profile; on
 
       {picks.length > 0 && <KeywordList items={picks} />}
       {pool?.generatedAt && picks.length > 0 && (
-        <p className="note">{updatedHour(pool.generatedAt)}시 업데이트 · 1시간마다 바뀌어요</p>
+        <p className="note">
+          {byAge && `${who}가 네이버에서 많이 검색하는 순 · `}
+          {updatedHour(pool.generatedAt)}시 업데이트 · 1시간마다 바뀌어요
+        </p>
       )}
     </>
   );
