@@ -4,13 +4,16 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "build:ait": "node scripts/build-ait.mjs",
+    "deploy:ait": "ait deploy"
   },
   "dependencies": {
     "fast-xml-parser": "^5.11.2",
     "next": "^15.5.0",
     "react": "^19.1.0",
-    "react-dom": "^19.1.0"
+    "react-dom": "^19.1.0",
+    "@apps-in-toss/web-framework": "^3.9.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

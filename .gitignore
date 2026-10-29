@@ -4,3 +4,7 @@ node_modules
 next-env.d.ts
 .vercel
 .env*.local
+
+*.ait
+out
+.ait-api-parked

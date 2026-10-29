@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { api } from "@/lib/api";
 
 type Msg = { from: "me" | "friend"; text: string };
 
@@ -63,7 +64,7 @@ export default function GaraTalk({ onBack }: { onBack: () => void }) {
     setText("");
     setTyping(true);
     try {
-      const r = await fetch("/api/chat", {
+      const r = await fetch(api("/api/chat"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages: next }),

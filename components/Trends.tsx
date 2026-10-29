@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useFeed } from "@/lib/feed";
+import { api } from "@/lib/api";
 import KeywordList from "./KeywordList";
 
 type Trend = {
@@ -46,7 +47,7 @@ function compare(hour: string, trends: Trend[]): Record<string, Badge> {
 // 키워드를 누르면 관련 기사 제목이 펼쳐진다.
 export default function Trends() {
   // 앱을 열 때 미리 받아 둔 걸 바로 보여준다 (lib/feed.ts). 서버는 1시간마다 새로 만든다.
-  const { data, error, retry } = useFeed<{ trends: Trend[]; hour: string }>("/api/trends");
+  const { data, error, retry } = useFeed<{ trends: Trend[]; hour: string }>(api("/api/trends"));
   const trends = data?.trends ?? null;
   const hour = data?.hour ?? "";
   const [badges, setBadges] = useState<Record<string, Badge>>({});

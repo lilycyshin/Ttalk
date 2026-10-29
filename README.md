@@ -26,3 +26,8 @@ Vercel: GitHub 저장소 import만 하면 설정 없이 빌드됨.
 
 ## pipeline/
 매일 토픽을 만드는 파이프라인 프로토타입(RSS 수집 → Claude로 토픽·멘트 생성). 앱 빌드와 별개 패키지. 자세한 건 `pipeline/README.md`.
+
+## 토스 앱인토스 번들
+
+`npm run build:ait` → 루트에 `introvert-survival.ait`가 생긴다. 앱인토스 콘솔에 올리거나 `npm run deploy:ait`(API 키 필요)로 올린다.
+번들은 정적 파일만 담고, 데이터는 Vercel 서버(https://dailysmalltalk.vercel.app/api)에서 받는다. 앱 이름은 `apps-in-toss.config.ts`의 `appName`을 콘솔에 등록한 이름과 맞춘다.

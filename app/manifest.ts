@@ -1,5 +1,8 @@
 import type { MetadataRoute } from "next";
 
+// 정적 빌드(토스 번들)에서도 파일로 만들어지게.
+export const dynamic = "force-static";
+
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "내향인 생존하기 - 오늘의 점심 스몰토크",

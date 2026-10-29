@@ -1,6 +1,7 @@
 "use client";
 import { useMemo } from "react";
 import { useFeed } from "@/lib/feed";
+import { api } from "@/lib/api";
 import { AGE_LABEL, pickKeywords, type KeywordPool, type Profile } from "@/lib/topics";
 import Mascot from "./Mascot";
 import KeywordList from "./KeywordList";
@@ -10,7 +11,7 @@ import { sceneImage } from "@/lib/persona";
 export default function Home({ profile, onEditKeywords }: { profile: Profile; onEditKeywords: () => void }) {
   // 서버가 1시간마다 미리 만들어 둔 관심사 전체 풀을 받아서(앱을 열 때 미리 받아 둠) 내 관심사에 맞게 여기서 고른다.
   // 키워드를 다시 골라도 새로 받지 않고 바로 바뀐다.
-  const { data, error, retry } = useFeed<KeywordPool & { generatedAt?: string }>("/api/today");
+  const { data, error, retry } = useFeed<KeywordPool & { generatedAt?: string }>(api("/api/today"));
   // 예전 버전이 받아 둔 데이터(items 없음)는 없는 걸로 친다. 뒤에서 새로 받으면 바뀐다.
   const pool = data?.items ? data : null;
 

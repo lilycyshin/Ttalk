@@ -14,6 +14,11 @@ const RULES: [RegExp, string[]][] = [
 ];
 const ANY = ["ㅇㅇ 그래서?", "헐 진짜?", "ㅋㅋㅋ 그건 좀 웃기다", "아 그거 나도 봤어", "오 대박", "ㄹㅇ 공감", "그니까 말이야", "아 그랬구나", "ㅋㅋ 계속 말해봐"];
 
+// 토스 미니앱에서 부를 때 브라우저가 먼저 보내는 확인 요청. 허용 헤더는 next.config.ts에서 붙는다.
+export function OPTIONS() {
+  return new Response(null, { status: 204 });
+}
+
 export async function POST(req: Request) {
   let messages: Msg[] = [];
   try {
